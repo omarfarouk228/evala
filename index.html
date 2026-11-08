@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#17110d">
+  <title>Évala · La saison des lutteurs</title>
+  <meta name="description" content="Pays kabyè, juillet. Prépare-toi pendant dix jours, puis lutte pour ton canton dans les arènes de l'Évala.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <canvas id="scene" aria-label="Arène de l'Évala"></canvas>
+
+  <!-- Combat -->
+  <div id="hud" hidden>
+    <div class="side left">
+      <div class="who"><i class="band" id="h-band-a"></i><b id="h-name-a">Essowè</b><span id="h-canton-a">Landa</span></div>
+      <div class="meter"><label>Souffle</label><div class="bar"><i id="h-sta-a"></i></div></div>
+      <div class="meter"><label>Prise</label><div class="bar grip"><i id="h-grip-a"></i></div></div>
+    </div>
+    <div class="clock"><span id="h-round">Rencontre</span><b id="h-time">60</b></div>
+    <div class="side right">
+      <div class="who"><span id="h-canton-b">Pya</span><b id="h-name-b">Kpatcha</b><i class="band" id="h-band-b"></i></div>
+      <div class="meter"><label>Souffle</label><div class="bar"><i id="h-sta-b"></i></div></div>
+      <div class="meter"><label>Prise</label><div class="bar grip"><i id="h-grip-b"></i></div></div>
+    </div>
+  </div>
+  <div id="balance" hidden><i id="bal-a"></i><i id="bal-b"></i><span>Équilibre</span></div>
+  <div id="vs" hidden></div>
+  <div id="callout" hidden></div>
+  <div id="coach" hidden></div>
+
+  <div id="touch" hidden>
+    <div class="pad">
+      <button data-k="left" aria-label="Reculer ou tirer">◀</button>
+      <button data-k="right" aria-label="Avancer ou pousser">▶</button>
+    </div>
+    <div class="acts">
+      <button data-k="earth">Terre</button>
+      <button data-k="lift">Soulever</button>
+      <button data-k="trip">Crochet</button>
+      <button data-k="grab" class="big">Saisir</button>
+    </div>
+  </div>
+
+  <!-- Écrans -->
+  <section id="screen" class="screen"></section>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
