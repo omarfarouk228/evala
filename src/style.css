@@ -176,3 +176,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .award.me { background: linear-gradient(160deg, rgba(232,176,74,.32), rgba(181,88,47,.25)); border-color: var(--gold); }
 @keyframes award { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
 @media (max-width: 720px) { .bracket, .awards { grid-template-columns: 1fr; } }
+
+/* Bouton son : à côté du chronomètre, toujours accessible */
+#sound { position: fixed; z-index: 30; top: max(14px, env(safe-area-inset-top)); right: 18px; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(239,230,214,.25); background: rgba(23,17,13,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: grid; place-items: center; color: var(--bone); }
+#sound svg { width: 20px; height: 20px; }
+#sound.off { color: var(--gold); }
+#sound:hover { border-color: var(--gold); }
+#hud:not([hidden]) ~ #sound { right: auto; left: calc(50% + 74px); }
+@media (max-width: 720px) { #hud:not([hidden]) ~ #sound { left: auto; right: 12px; top: auto; bottom: 200px; } }

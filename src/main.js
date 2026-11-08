@@ -3,7 +3,7 @@ import { Arena } from './arena.js';
 import { makeWrestler, makeBout, makeAI, think, command, step, simulate } from './combat.js';
 import { makeVis, updateVis, drawPair } from './fighter.js';
 import { ACTIVITIES, makeTeam, dateLabel, HOME, BANDS, PLAYER, SKINS, FIRST_YEAR, ARCADE, ROUNDS, roundLabel, bracketFor } from './data.js';
-import { initAudio, setCrowd, startMusic, stopMusic, sfx, setAmbience } from './audio.js';
+import { initAudio, setCrowd, startMusic, stopMusic, sfx, setAmbience, setMuted, muted } from './audio.js';
 
 const cv = document.getElementById('scene');
 const ctx = cv.getContext('2d');
@@ -823,6 +823,16 @@ function freeTraining() {
   $('l1').onclick = () => pick(0.85, 0.2); $('l2').onclick = () => pick(1.0, 0.5); $('l3').onclick = () => pick(1.2, 0.85);
   $('b-back').onclick = titleScreen;
 }
+
+// ------------------------------------------------------------------ son
+const soundBtn = document.createElement('button');
+soundBtn.id = 'sound'; soundBtn.setAttribute('aria-label', 'Couper le son'); soundBtn.title = 'Couper ou remettre le son (M)';
+const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+const paintSound = () => { soundBtn.innerHTML = muted ? ICON_OFF : ICON_ON; soundBtn.classList.toggle('off', muted); };
+const toggleSound = () => { initAudio(); setMuted(!muted); paintSound(); };
+soundBtn.onclick = toggleSound; document.body.appendChild(soundBtn); paintSound();
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyM') toggleSound(); });
 
 // ------------------------------------------------------------------ démarrage
 resize();

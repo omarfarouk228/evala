@@ -5,13 +5,19 @@
 
 let ac = null, master = null, crowdGain = null, crowdFilter = null, musicGain = null;
 let musicTimer = null, excite = 0;
+const MUTE_KEY = 'evala.mute';
+export let muted = (() => { try { return localStorage.getItem(MUTE_KEY) === '1'; } catch { return false; } })();
+export function setMuted(m) {
+  muted = m; try { localStorage.setItem(MUTE_KEY, m ? '1' : '0'); } catch { /* rien */ }
+  if (master) master.gain.setTargetAtTime(m ? 0 : 0.8, ac.currentTime, 0.05);
+}
 
 export function initAudio() {
   if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   ac = new AC();
-  master = ac.createGain(); master.gain.value = 0.8; master.connect(ac.destination);
+  master = ac.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ac.destination);
   // Rumeur : bruit rose filtré et modulé
   const len = ac.sampleRate * 4, buf = ac.createBuffer(2, len, ac.sampleRate);
   for (let ch = 0; ch < 2; ch++) {

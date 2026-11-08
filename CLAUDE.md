@@ -16,7 +16,7 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - Node passe par nvm : `export PATH=~/.nvm/versions/node/v22.23.1/bin:$PATH`.
 - `npm install`, puis `npm run dev` (port **5175** ; Route N1 utilise le 5173, Nana Benz le 5174). Le serveur doit rester ouvert. URL : http://localhost:5175/
 - `npm test` lance vitest sur le moteur de combat.
-- Dépôt GitHub **privé** `omarfarouk228/evala`. Le compte est en plan gratuit, donc il n'y a **pas de GitHub Pages tant que le dépôt est privé**. Le workflow `.github/workflows/deploy.yml` est prêt : passer le dépôt en public, puis activer Pages en mode « GitHub Actions ».
+- Dépôt GitHub **public** `omarfarouk228/evala` (passé en public le 2026-11-08 à la demande de l'utilisateur, « comme les autres »). GitHub Pages en mode workflow, déployé à chaque push sur main : https://omarfarouk228.github.io/evala/
 - Débogage dans la console : `__ev.G` (état de l'aventure, modifiable), `__ev.scene` (scène en cours : `bout`, `a`, `b`), `__ev.planDay()`, `__ev.tournamentStart()`, `__ev.matchIntro()`, `__ev.ceremony()`, `__ev.arcade()`, `__ev.newGame()`.
   - Figer une pose : `__ev.scene.bout.phase = 'pause'`, puis régler `a.x`, `b.x`, `bout.clinch`, `a.lean`…
   - Le face-à-face reste affiché tant que la phase n'est pas `fight` : `document.getElementById('vs').hidden = true`.
@@ -41,7 +41,7 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - **Défaites** : après chaque combat perdu, on peut « Rejouer le combat » ou l'accepter. Des **points de reprise** sont enregistrés au début de chaque année et avant chaque rencontre (menu Aventure : « Revenir à un moment de l'aventure »). Ils sont stockés dans localStorage : `evala.save.v1`, `evala.checkpoints.v1`.
 - **Arcade** : la tournée de 8 cantons, deux chances, score (rapidité, bonus crochet et soulevé), record (`evala.arcade.best`).
 - **Entraînement** : leçon guidée de Pyabalo (tous les gestes), combats libres sur trois niveaux.
-- **Commandes** : ← → (avancer, reculer, pousser, tirer), Espace (saisir), K (crochet), L (soulever), ↓ (prendre la terre). Boutons tactiles sur mobile.
+- **Commandes** : ← → (avancer, reculer, pousser, tirer), Espace (saisir), K (crochet), L (soulever), ↓ (prendre la terre), **M (couper le son)**. Boutons tactiles sur mobile. Le bouton son est toujours visible (en haut à droite, ou à côté du chronomètre en combat), et son état est mémorisé dans `evala.mute`. L'utilisateur l'exige sur tous les jeux.
 
 ## Sources et réalisme
 - Wikipédia « Evala » : rite kabyè, juillet, du 2e au 3e samedi, arènes sur des terrains de football, aînés arbitres, rencontres entre villages puis finale, dates fixées par les oracles et le grand prêtre Tchodjo, tournée des prêtres aux lieux sacrés après les luttes.
