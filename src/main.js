@@ -4,6 +4,8 @@ import { makeWrestler, makeBout, makeAI, think, command, step, simulate } from '
 import { makeVis, updateVis, drawPair, drawFighter } from './fighter.js';
 import { ACTIVITIES, makeTeam, dateLabel, HOME, BANDS, PLAYER, SKINS, FIRST_YEAR, ARCADE, ROUNDS, roundLabel, bracketFor } from './data.js';
 import { initAudio, setCrowd, startMusic, stopMusic, sfx, setAmbience, setMuted, muted } from './audio.js';
+import { fight3d } from './three/fight3d.js';
+const USE3D = !new URLSearchParams(location.search).has('2d');
 
 const cv = document.getElementById('scene');
 const ctx = cv.getContext('2d');
@@ -60,6 +62,7 @@ window.addEventListener('resize', resize);
 
 // Scène de fond (menus, journée au village) : caméra qui dérive lentement
 function backdrop(key, opts) {
+  if (USE3D) fight3d().show(false);
   const s = { cam: { x: 0, zoom: 1 }, t: 0, key, opts };
   s.onResize = () => { s.arena = getArena(key, opts); };
   s.onResize();
@@ -215,8 +218,13 @@ function fightScene(o) {
   const ai = makeAI(b, { style: o.b.style, skill: o.b.skill });
   const va = makeVis(), vb = makeVis();
   const cam = { x: 0, zoom: 1, shake: 0, y: 0 };
-  const s = { arena, a, b, bout, t: 0, slow: 0, endT: 0, introT: 0, exc: 0.2, tuto: o.tutorial ? tutorial() : null };
-  s.onResize = () => { s.arena = getArena(`fight-${o.mood}-${o.few ? 'f' : o.empty ? 'e' : 'c'}`, { mood: o.mood, few: o.few, empty: o.empty, seed: o.seed || 3 }); };
+  const s = { arena, a, b, bout, t: 0, slow: 0, endT: 0, introT: 0, exc: 0.2, tuto: o.tutorial ? tutorial() : null, ready: !USE3D };
+  s.onResize = () => { s.arena = getArena(`fight-${o.mood}-${o.few ? 'f' : o.empty ? 'e' : 'c'}`, { mood: o.mood, few: o.few, empty: o.empty, seed: o.seed || 3 }); if (USE3D) fight3d().resize(); };
+  let F = null;
+  if (USE3D) {
+    F = fight3d(); F.show(true);
+    F.prepare(o.mood, a, b, { few: o.few, empty: o.empty }).then(() => { s.ready = true; }).catch((e) => { console.error(e); F.show(false); s.ready = true; s.no3d = true; });
+  }
 
   // HUD
   $('hud').hidden = false; $('balance').hidden = false; $('touch').hidden = !isTouch;
@@ -235,6 +243,7 @@ function fightScene(o) {
     let sdt = dt;
     if (s.slow > 0) { s.slow -= dt; sdt = dt * 0.28; }
     if (bout.phase === 'intro') {
+      if (!s.ready) { if (F) F.update(dt, bout, 0); return; }
       s.introT += dt;
       if (s.introT > 2.8) { bout.phase = 'fight'; $('vs').hidden = true; callout('Luttez !'); setTimeout(hideCallout, 700); sfx('whistle'); if (s.tuto) s.tuto.show(); }
     }
@@ -250,6 +259,7 @@ function fightScene(o) {
     if (s.tuto) s.tuto.check(bout, s);
     bout.events.length = 0;
     updateVis(va, a, b, bout, sdt); updateVis(vb, b, a, bout, sdt);
+    if (F && !s.no3d) F.update(sdt, bout, s.exc);
     // caméra
     const mid = (a.x + b.x) / 2;
     const gapv = Math.abs(b.x - a.x);
@@ -273,6 +283,13 @@ function fightScene(o) {
     }
   };
   s.draw = () => {
+    if (F && !s.no3d) {
+      ctx.clearRect(0, 0, W, H);
+      F.render();
+      if (!s.ready) { ctx.fillStyle = 'rgba(239,230,214,0.9)'; ctx.font = `600 ${16 * DPR}px 'Instrument Sans', sans-serif`; ctx.textAlign = 'center'; ctx.fillText('Les lutteurs se préparent…', W / 2, H * 0.9); }
+      drawTell(s, cam, ai, F);
+      return;
+    }
     const sh = cam.shake * cam.shake * 14 * DPR;
     ctx.save();
     ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
@@ -283,15 +300,17 @@ function fightScene(o) {
     s.arena.drawFront(ctx, cam, 1 / 60, s.exc);
     ctx.restore();
   };
+  s.F = F;
   bout.phase = 'intro';
   return s;
 }
 
 // Indice visuel quand l'adversaire prépare un geste (plus discret les années suivantes)
-function drawTell(s, cam, ai) {
+function drawTell(s, cam, ai, F) {
   const b = s.b; if (!ai.pending || !b.tell) return;
   if (G && G.year >= 3 && ai.pending !== 'lift') return;
-  const x = s.arena.screenX(b.x, cam), y = s.arena.groundY - 2.0 * s.arena.ppm * cam.zoom;
+  let x = s.arena.screenX(b.x, cam), y = s.arena.groundY - 2.0 * s.arena.ppm * cam.zoom;
+  if (F) { const p = F.headScreen('b', W, H); if (p) { x = p[0]; y = p[1]; } }
   const lbl = { grab: 'Il va saisir', trip: 'Crochet !', lift: 'Il va soulever' }[ai.pending];
   if (!lbl) return;
   ctx.save(); ctx.font = `700 ${Math.round(15 * DPR)}px 'Instrument Sans', sans-serif`; ctx.textAlign = 'center';
@@ -310,7 +329,8 @@ function onEvent(s, e, cam) {
   if (e.type === 'trip') { sfx('grunt'); if (e.ok === true) { arena.puff(W_.x, 10, 1); cam.shake = 0.4; } if (e.who === 'a' && e.ok === false) flash('Il pousse trop fort : le crochet ne passe pas'); }
   if (e.type === 'lift') { sfx('grunt', 1.4); if (e.ok === false && e.who === 'a') flash('Pas assez de force ou de souffle pour le soulever'); }
   if (e.type === 'break') { sfx('whistle', 0.7); flash(e.reason === 'elders' ? 'Les aînés séparent les lutteurs' : 'Les corps graissés glissent : la prise lâche'); }
-  if (e.type === 'fall') { s.slow = 0.9; cam.shake = 1; const f = e.who === 'a' ? a : b; setTimeout(() => { sfx('thud'); arena.puff(f.x - f.fallDir * f.dir * 0.8, 26, 1.6); }, 380); }
+  if (e.type === 'fall') { s.slow = 0.9; cam.shake = 1; const f = e.who === 'a' ? a : b; setTimeout(() => { sfx('thud'); arena.puff(f.x - f.fallDir * f.dir * 0.8, 26, 1.6); if (s.F) { s.F.puff(f.x - f.fallDir * f.dir * 0.8, 22, 1.6); s.F.shake(1); } }, 380); }
+  if (s.F && (e.type === 'clinch' || e.type === 'trip' && e.ok === true)) { s.F.puff((a.x + b.x) / 2, 6, 0.5); if (e.type === 'trip') s.F.shake(0.4); }
   if (e.type === 'end') {
     const r = e.result;
     if (r.winner === 'a') { sfx('cheer'); callout('Victoire', `${a.name} met ${b.name} à terre`); }
@@ -321,6 +341,7 @@ function onEvent(s, e, cam) {
 }
 
 function cleanupFight() {
+  if (USE3D) fight3d().show(false);
   $('vs').hidden = true;
   $('hud').hidden = true; $('balance').hidden = true; $('touch').hidden = true; $('coach').hidden = true; hideCallout();
   stopMusic(); setCrowd(0.2, 0);
@@ -462,14 +483,14 @@ function introCard() {
     clearScreen();
     scene = fightScene({
       mood: 'matin', empty: true, tutorial: true, label: 'Entraînement', title: 'Sur la place', subtitle: 'Pyabalo t\'apprend les gestes', timeLimit: 999,
-      a: playerFighter(), b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#5e321d', cloth: '#30261f', band: BANDS[HOME], body: { build: 1.12, height: 1.05, head: 1 }, face: { nose: 1.05, jaw: 1.1, brow: 1.2, lips: 1 }, hair: 'bald', beard: true } },
+      a: playerFighter(), b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#5e321d', cloth: '#30261f', band: BANDS[HOME], body: { build: 1.12, height: 1.05, head: 1 }, face: { nose: 1.05, jaw: 1.1, brow: 1.2, lips: 1 }, hair: 'bald', beard: true, model: 2 } },
       onEnd: () => { G.tutoDone = true; G.stats.technique += 0.03; save(); planDay(); },
     });
   };
 }
 
 function playerFighter() {
-  return { name: PLAYER.name, canton: HOME, ...G.stats, look: { skin: SKINS[0], cloth: '#2a2422', band: BANDS[HOME], knot: true, body: { build: 0.98 + Math.min(0.2, (G.stats.force - 0.9) * 0.4), height: 1.02, head: 1 }, face: { nose: 0.95, jaw: 1.02, brow: 1.1, lips: 1 }, hair: 'ras' } };
+  return { name: PLAYER.name, canton: HOME, ...G.stats, look: { skin: SKINS[0], cloth: '#2a2422', band: BANDS[HOME], knot: true, body: { build: 0.98 + Math.min(0.2, (G.stats.force - 0.9) * 0.4), height: 1.02, head: 1 }, face: { nose: 0.95, jaw: 1.02, brow: 1.1, lips: 1 }, hair: 'ras', model: 0 } };
 }
 
 function resume() {

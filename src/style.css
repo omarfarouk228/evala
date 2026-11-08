@@ -13,6 +13,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--ink); color: var(--bone); font-family: var(--body); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#scene3d { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+#scene3d:not([hidden]) + #scene { background: transparent; }
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; cursor: pointer; }
 

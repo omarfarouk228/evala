@@ -46,8 +46,10 @@ function spriteFrames(draw, n, w, h) {
 export class Arena3D {
   constructor(canvas, opts = {}) {
     this.mood = MOODS[opts.mood || 'aprem'];
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.opts = opts;
+    const small = Math.min(window.innerWidth, window.innerHeight) < 700;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, small ? 1 : 1.5));
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -76,7 +78,7 @@ export class Arena3D {
     S.add(new THREE.HemisphereLight(0xcfe0ff, 0xb5582f, 0.7));
     const sun = new THREE.DirectionalLight(new THREE.Color(m.sun), 2.4);
     sun.position.set(-7, 12, 5); sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.near = 1; sun.shadow.camera.far = 60;
+    sun.shadow.mapSize.set(Math.min(window.innerWidth, window.innerHeight) < 700 ? 1024 : 2048, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1024 : 2048); sun.shadow.camera.near = 1; sun.shadow.camera.far = 60;
     sun.shadow.camera.left = -14; sun.shadow.camera.right = 14; sun.shadow.camera.top = 14; sun.shadow.camera.bottom = -14; sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
     S.add(sun); S.add(sun.target); this.sun = sun;
     // sol de latérite
@@ -100,8 +102,9 @@ export class Arena3D {
     }
     // foule : deux arcs de spectateurs peints, trois images par personne
     const frames = Array.from({ length: 24 }, (_, v) => spriteFrames((g, f) => person(g, 128, 330, 240, v, f), 3, 256, 340));
-    for (let i = 0; i < 150; i++) {
-      const a = (i / 150) * Math.PI * 2, back = i % 2, d = 7.4 + back * 1.1 + r() * 0.4;
+    const nCrowd = this.opts.empty ? 0 : this.opts.few ? 24 : 150;
+    for (let i = 0; i < nCrowd; i++) {
+      const a = (i / 150) * Math.PI * 2 * (nCrowd / 150) + (this.opts.few ? 0.6 : 0), back = i % 2, d = 7.4 + back * 1.1 + r() * 0.4;
       if (Math.abs(Math.sin(a)) < 0.08 && Math.cos(a) > 0) continue; // côté caméra laissé ouvert
       const v = Math.floor(r() * 24), sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: frames[v][0], transparent: true, alphaTest: 0.3 }));
       const hgt = 1.75 * (0.92 + r() * 0.16);
@@ -116,7 +119,7 @@ export class Arena3D {
     const tent = new THREE.Group();
     const tarp = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 4), new THREE.MeshStandardMaterial({ color: 0x2f6fb5, roughness: 0.8 })); tarp.position.y = 2.6; tarp.castShadow = true; tent.add(tarp);
     for (const [x, z] of [[-3.3, -1.8], [3.3, -1.8], [-3.3, 1.8], [3.3, 1.8]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 8), new THREE.MeshStandardMaterial({ color: 0xe8e2d2 })); p.position.set(x, 1.3, z); p.castShadow = true; tent.add(p); }
-    tent.position.set(-6, 0, -9); S.add(tent);
+    tent.position.set(-6, 0, -9); if (!this.opts.empty && !this.opts.few) S.add(tent);
     // poussière en suspension
     const dustTex = canvasTex(32, 32, (g) => { const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,220,170,0.8)'); gr.addColorStop(1, 'rgba(255,220,170,0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 32); });
     this.dust = [];
@@ -132,7 +135,7 @@ export class Arena3D {
 
   // Charge un personnage rigué (GLB ou glTF), le pose, le teinte, lance une animation.
   // opts : x, z, facing, scale, anim, clips (bibliothèque externe), skin (teinte de peau), band (couleur de ceinture)
-  async addCharacter(url, { x = 0, z = 0, facing = 0, anim = 'Idle', tint = null, skin = null, band = null, clips = null, scale = 1 } = {}) {
+  async addCharacter(url, { x = 0, z = 0, facing = 0, anim = 'Idle', tint = null, skin = null, band = null, clips = null, scale = 1, fixNormals = false } = {}) {
     if (!this.loader) this.loader = new GLTFLoader();
     if (!this.cache) this.cache = new Map();
     if (!this.cache.has(url)) this.cache.set(url, this.loader.loadAsync(url));
@@ -141,7 +144,8 @@ export class Arena3D {
     const skinCol = skin ? new THREE.Color(skin) : null;
     model.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false;   // pas d'ombre reçue : évite l'auto-ombrage des maillages animés
+      if (fixNormals) o.geometry.computeVertexNormals();
       o.material = o.material.clone();
       const m = o.material, name = (m.name || '').toLowerCase();
       if (name.includes('hair')) { o.visible = false; return; }           // les cheveux viennent à part
@@ -187,13 +191,13 @@ export class Arena3D {
     pelvis.add(g); this._shorts = g;
   }
 
-  update(dt) {
+  update(dt, exc = 0.3) {
     this.t += dt;
     for (const mx of this.mixers) mx.update(dt);
-    // la foule respire, lève les bras, chante
+    // la foule respire, lève les bras, chante ; plus l'excitation monte, plus elle bouge
     for (const c of this.crowd) {
-      const k = Math.sin(this.t * c.sp_ + c.ph);
-      const f = k > 0.75 ? 1 : k < -0.6 ? 2 : 0;
+      const k = Math.sin(this.t * c.sp_ * (1 + exc) + c.ph);
+      const f = k > 0.85 - exc * 0.5 ? 1 : k < -0.6 ? 2 : 0;
       if (c.sp.material.map !== c.frames[f]) { c.sp.material.map = c.frames[f]; c.sp.material.needsUpdate = true; }
     }
     for (const d of this.dust) { d.sp.position.y += d.v * dt * 0.3; d.sp.position.x += Math.sin(this.t * 0.5 + d.ph) * dt * 0.2; if (d.sp.position.y > 3.5) d.sp.position.y = 0; }
