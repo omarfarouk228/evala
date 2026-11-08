@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Évala · visionneuse 3D</title>
+  <style>html, body { margin: 0; height: 100%; background: #17110d; overflow: hidden; font-family: system-ui; color: #efe6d6; } canvas { position: fixed; inset: 0; width: 100%; height: 100%; } #tag { position: fixed; left: 14px; bottom: 12px; font-size: 13px; background: rgba(23,17,13,.7); padding: 8px 12px; border-radius: 8px; }</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="tag"></div>
+  <script type="module">
+    // Visionneuse : ?m=chemin/du/modele.glb&anim=Idle_Loop&clips=chemin/clips.glb
+    import { Arena3D, BASE } from './src/three/arena3d.js';
+    const q = new URLSearchParams(location.search);
+    const A = new Arena3D(document.getElementById('c'), { mood: q.get('mood') || 'matin' });
+    const url = q.get('m') || `${BASE}models/mpfb/wrestler1.glb`;
+    const clips = q.get('clips') ? await A.loadClips(q.get('clips')) : null;
+    const p = await A.addCharacter(url, { x: 0, facing: 0, clips, anim: q.get('anim') || 'Idle', skin: q.get('skin'), band: q.get('band') });
+    document.getElementById('tag').textContent = `${url.split('/').pop()} · clips : ${p.clips.join(', ') || 'aucun'}`;
+    const dist = +(q.get('d') || 4.2), h = +(q.get('h') || 1.0);
+    let last = performance.now();
+    function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; A.update(dt); const a = now * 0.00025; A.camera.position.set(Math.sin(a) * dist, h + 0.6, Math.cos(a) * dist); A.camera.lookAt(0, h, 0); A.render(); requestAnimationFrame(loop); }
+    requestAnimationFrame(loop);
+    window.__p = p; window.__a3 = A;
+  </script>
+</body>
+</html>

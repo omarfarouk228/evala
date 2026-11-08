@@ -7,7 +7,20 @@ Décision de l'utilisateur le 2026-11-08 : « voie 1 », des personnages 3D anim
 - Modèles de test : `public/models/Soldier.glb` et `Xbot.glb`, exemples du dépôt Three.js (rigs Mixamo). **À remplacer** par les vrais personnages, puis à supprimer.
 - Manette prise en charge dans le jeu 2D actuel (`readPad` dans `src/main.js`) : stick ou croix pour se déplacer, A saisir, X crochet, Y soulever, B ou bas prendre la terre ; croix et A dans les menus, B pour revenir.
 
-## Ce que l'utilisateur doit fournir (sources légales, comptes personnels)
+## Sources obtenues le 2026-11-08 (sans compte, toutes CC0)
+readyplayer.me ne répond plus et Mixamo exige un compte Adobe : abandonnés. À la place :
+- **Quaternius Universal Base Characters** (version gratuite) : corps « Superhero » homme et femme, texture de peau foncée incluse, 65 os (squelette du mannequin Unreal), coiffures (ras, barbe, longs, chignons), sourcils. Copié dans `public/models/quaternius/` (textures réduites à 1024 px, 29 Mo au total).
+- **Quaternius Universal Animation Library** (version gratuite, 42 clips) : Idle, Crouch_Idle, Walk, Jog, Sprint, Push_Loop, Punch_Jab et Cross, Hit_Chest et Hit_Head, Death01, Roll, Dance, Idle_Talking, Sitting… Même squelette que les corps : les clips s'appliquent directement (`Arena3D.loadClips` puis `addCharacter(url, { clips })`).
+- **MakeHuman via MPFB2 2.0.18 dans Blender 5.2** (installé par Homebrew) avec le pack `makehuman_system_assets_cc0` (peaux africaines jeunes, adultes, âgées, hommes et femmes ; yeux, cheveux, vêtements). Script `assets3d/scripts/mpfb_wrestler.py` : génère un homme (âge, muscle, poids, taille, proportions aléatoires), peau africaine texturée, yeux, squelette `game_engine`, export GLB. Exemple : `public/models/mpfb/wrestler1.glb`.
+- Archives et extractions dans `~/Documents/Github/TogoGame/assets3d/` (hors dépôts).
+
+## Pipeline retenu
+1. **Maintenant** : corps Quaternius + clips Quaternius pour animer le combat (prototype `arene3d.html`, 60 i/s).
+2. **Ensuite** : corps MakeHuman (visages tous différents, réalisme supérieur) liés au squelette Quaternius dans Blender (parentage avec poids automatiques), pour jouer les mêmes clips. Script à écrire dans `assets3d/scripts/`.
+3. Prises de lutte : pas de clips libres ; cinématique inverse (IK) sur les bras et le buste à partir des poses Crouch_Idle et Push_Loop, pilotée par la logique existante de `combat.js`.
+4. Short et ceinture du canton : à peindre dans la texture de peau (zone du short) plutôt qu'en maillage séparé.
+
+## Ce que l'utilisateur devait fournir (plus nécessaire)
 1. **Animations** : compte Adobe gratuit sur mixamo.com. Télécharger en FBX « without skin », 30 i/s, sur le personnage « Y Bot » : Fight Idle, Walking, Running, Standing Taunt, Victory, Defeat, Falling Back Death, Falling Forward Death, Stumble Backwards, Push, Pulling, et tout ce qui ressemble à de la lutte ou du grappling. Déposer dans `assets-src/mixamo/`.
 2. **Personnages** : deux options.
    - readyplayer.me : créer 8 à 12 avatars (hommes jeunes pour les lutteurs, corps « full body », peau foncée, cheveux ras ; pour Assigamé et Nana Benz, hommes et femmes de tous âges), exporter en GLB. Rig compatible Mixamo.

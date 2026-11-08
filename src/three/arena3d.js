@@ -123,26 +123,68 @@ export class Arena3D {
     for (let i = 0; i < 120; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dustTex, transparent: true, opacity: 0.35, depthWrite: false })); sp.position.set((r() - 0.5) * 16, r() * 3, (r() - 0.5) * 12); const s = 0.04 + r() * 0.1; sp.scale.set(s, s, 1); S.add(sp); this.dust.push({ sp, v: 0.1 + r() * 0.3, ph: r() * 6 }); }
   }
 
-  // Charge un personnage GLB rigué, le pose, lance une animation
-  async addCharacter(url, { x = 0, z = 0, facing = 0, anim = 'Idle', tint = null, scale = 1 } = {}) {
+  // Charge une bibliothèque d'animations (GLB) : les clips s'appliquent à tout modèle au même squelette
+  async loadClips(url) {
+    if (!this.loader) this.loader = new GLTFLoader();
+    const g = await this.loader.loadAsync(url);
+    return g.animations;
+  }
+
+  // Charge un personnage rigué (GLB ou glTF), le pose, le teinte, lance une animation.
+  // opts : x, z, facing, scale, anim, clips (bibliothèque externe), skin (teinte de peau), band (couleur de ceinture)
+  async addCharacter(url, { x = 0, z = 0, facing = 0, anim = 'Idle', tint = null, skin = null, band = null, clips = null, scale = 1 } = {}) {
     if (!this.loader) this.loader = new GLTFLoader();
     if (!this.cache) this.cache = new Map();
     if (!this.cache.has(url)) this.cache.set(url, this.loader.loadAsync(url));
     const gltf = await this.cache.get(url);
     const model = skeletonClone(gltf.scene);
-    model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (tint) { o.material = o.material.clone(); o.material.color = new THREE.Color(tint); o.material.roughness = 0.55; } } });
+    const skinCol = skin ? new THREE.Color(skin) : null;
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false;
+      o.material = o.material.clone();
+      const m = o.material, name = (m.name || '').toLowerCase();
+      if (name.includes('hair')) { o.visible = false; return; }           // les cheveux viennent à part
+      if (tint) m.color = new THREE.Color(tint);
+      if (skinCol && !name.includes('eye')) {
+        // la texture de peau foncée est multipliée par une teinte propre au lutteur ; peau graissée : plus brillante
+        // la texture de peau foncée est déjà sombre : on la module par une teinte légère, propre au lutteur
+        m.color = new THREE.Color(1, 1, 1).lerp(skinCol, 0.35).multiplyScalar(1.15);
+        m.roughness = 0.5; m.metalness = 0.0; m.envMapIntensity = 1.2;
+        if (m.normalScale) m.normalScale.set(0.8, 0.8);
+      }
+      if (name.includes('eye')) { m.roughness = 0.2; }
+      m.needsUpdate = true;
+    });
     model.position.set(x, 0, z); model.rotation.y = facing; model.scale.setScalar(scale);
     this.scene.add(model);
+    // short de lutte et ceinture : un pagne court texturé, attaché au bassin
+    // (short et ceinture : à faire proprement sur le maillage, voir PLAN-3D)
+    void band;
     const mixer = new THREE.AnimationMixer(model);
-    const clips = gltf.animations;
-    const find = (n) => clips.find(c => c.name.toLowerCase() === n.toLowerCase()) || clips.find(c => c.name.toLowerCase().includes(n.toLowerCase()));
-    const actions = {}; for (const c of clips) actions[c.name] = mixer.clipAction(c);
-    const first = find(anim) || clips[0]; if (first) mixer.clipAction(first).play();
+    const all = (clips || gltf.animations).filter(c => c.name !== 'A_TPose');
+    const find = (n) => all.find(c => c.name.toLowerCase() === n.toLowerCase()) || all.find(c => c.name.toLowerCase().includes(n.toLowerCase()));
+    const first = find(anim) || all[0]; if (first) mixer.clipAction(first).play();
     this.mixers.push(mixer);
-    const P = { model, mixer, actions, clips: clips.map(c => c.name), current: first ? first.name : null,
-      play(name, fade = 0.3) { const c = find(name); if (!c || c.name === this.current) return; const next = mixer.clipAction(c); const prev = this.current && mixer.clipAction(find(this.current)); next.reset().fadeIn(fade).play(); if (prev) prev.fadeOut(fade); this.current = c.name; } };
+    const P = { model, mixer, clips: all.map(c => c.name), current: first ? first.name : null,
+      play(name, fade = 0.3, once = false) { const c = find(name); if (!c || c.name === this.current) return; const next = mixer.clipAction(c); const prev = this.current && mixer.clipAction(find(this.current)); next.reset(); if (once) { next.setLoop(THREE.LoopOnce, 1); next.clampWhenFinished = true; } next.fadeIn(fade).play(); if (prev) prev.fadeOut(fade); this.current = c.name; } };
     this.people.push(P);
     return P;
+  }
+
+  // Short court en tissu sombre et ceinture de couleur, portés par le bassin (suivent les hanches)
+  addShorts(model, band) {
+    const pelvis = model.getObjectByName('pelvis'); if (!pelvis) return;
+    const cloth = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.23, 0.26, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0x2a2422, roughness: 0.95, side: THREE.DoubleSide }));
+    cloth.castShadow = true;
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.022, 10, 32), new THREE.MeshStandardMaterial({ color: new THREE.Color(band), roughness: 0.7 }));
+    belt.rotation.x = Math.PI / 2; belt.position.y = 0.1;
+    const g = new THREE.Group(); g.add(cloth); g.add(belt);
+    // le bassin du rig est en centimètres et orienté différemment : on compense
+    const inv = new THREE.Vector3(); pelvis.getWorldScale(inv);
+    g.scale.setScalar(1 / (inv.x || 1)); g.position.set(0, 0, -0.02);
+    g.rotation.set(Math.PI / 2, 0, 0);
+    pelvis.add(g); this._shorts = g;
   }
 
   update(dt) {

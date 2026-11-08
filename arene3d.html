@@ -8,41 +8,47 @@
   <style>
     html, body { margin: 0; height: 100%; background: #17110d; overflow: hidden; font-family: 'Instrument Sans', sans-serif; color: #efe6d6; }
     canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-    #tag { position: fixed; left: 18px; bottom: 16px; background: rgba(23,17,13,.7); padding: 10px 14px; border-radius: 10px; font-size: 13px; max-width: 520px; line-height: 1.4; }
+    #tag { position: fixed; left: 18px; bottom: 16px; background: rgba(23,17,13,.7); padding: 10px 14px; border-radius: 10px; font-size: 13px; max-width: 540px; line-height: 1.4; }
     #tag b { font-family: 'Big Shoulders Display'; font-size: 22px; text-transform: uppercase; display: block; }
     #fps { position: fixed; right: 18px; top: 14px; font-size: 13px; opacity: .8; }
+    #clips { position: fixed; right: 18px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 420px; justify-content: flex-end; }
+    #clips button { font: 600 12px 'Instrument Sans'; color: #efe6d6; background: rgba(23,17,13,.7); border: 1px solid rgba(239,230,214,.3); border-radius: 8px; padding: 6px 9px; cursor: pointer; }
+    #clips button.on { background: #b5582f; }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
-  <div id="tag"><b>Prototype 3D · socle Three.js</b>Arène en vraie 3D : soleil et ombres portées, sol de latérite, collines, foule peinte en panneaux, poussière. Les deux personnages sont des modèles de test rigués (exemples Three.js, rigs Mixamo) : ils seront remplacés par les lutteurs.</div>
+  <div id="tag"><b>Prototype 3D · corps et animations CC0</b>Deux lutteurs (corps Quaternius, peau foncée, squelette à 65 os) animés par des clips de capture de mouvement de la bibliothèque Quaternius, dans l'arène 3D. Clique sur un clip pour le jouer sur les deux.</div>
   <div id="fps"></div>
+  <div id="clips"></div>
   <script type="module">
-    import { Arena3D, BASE } from './src/three/arena3d.js';
+    import { Arena3D, BASE, THREE } from './src/three/arena3d.js';
     const A = new Arena3D(document.getElementById('c'), { mood: 'aprem' });
-    const a = await A.addCharacter(`${BASE}models/Soldier.glb`, { x: -1.1, z: 0, facing: Math.PI / 2, anim: 'Idle' });
-    const b = await A.addCharacter(`${BASE}models/Xbot.glb`, { x: 1.1, z: 0, facing: -Math.PI / 2, anim: 'idle' });
-    console.log('clips', a.clips, b.clips);
-    let last = performance.now(), frames = 0, acc = 0, phase = 0;
+    const Q = `${BASE}models/quaternius/`;
+    // les clips viennent du fichier d'animations, appliqués aux corps (mêmes noms d'os)
+    const lib = await A.loadClips(`${Q}UAL1_Standard.glb`);
+    const a = await A.addCharacter(`${Q}Superhero_Male_FullBody.gltf`, { x: -1.0, facing: Math.PI / 2, clips: lib, anim: 'Idle_Loop', skin: '#6b3d24' });
+    const b = await A.addCharacter(`${Q}Superhero_Male_FullBody.gltf`, { x: 1.0, facing: -Math.PI / 2, clips: lib, anim: 'Idle_Loop', skin: '#4f2a17', band: '#2f5fa8' });
+    console.log('clips', a.clips);
+    const box = document.getElementById('clips');
+    for (const n of ['Idle_Loop', 'Crouch_Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Push_Loop', 'Punch_Jab', 'Hit_Chest', 'Hit_Head', 'Roll', 'Death01', 'Dance_Loop', 'Idle_Talking_Loop']) {
+      const bt = document.createElement('button'); bt.textContent = n.replace(/_Loop/, '').replace(/_/g, ' ');
+      bt.onclick = () => { a.play(n); b.play(n); [...box.children].forEach(c => c.classList.toggle('on', c === bt)); };
+      box.appendChild(bt);
+    }
+    let last = performance.now(), frames = 0, acc = 0;
     function loop(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       A.update(dt);
-      // petite mise en scène : ils marchent l'un vers l'autre, puis se font face
-      phase += dt;
-      const k = (phase % 10);
-      if (k < 3) { a.play('Walk'); b.play('walk'); a.model.position.x = -3 + k * 0.63; b.model.position.x = 3 - k * 0.63; }
-      else if (k < 8) { a.play('Idle'); b.play('idle'); }
-      else { a.play('Run'); b.play('agree'); }
-      // caméra qui tourne lentement
-      const ang = Math.sin(now * 0.00012) * 0.5;
-      A.camera.position.set(Math.sin(ang) * 8.5, 1.7 + Math.sin(now * 0.0003) * 0.2, Math.cos(ang) * 8.5);
+      const ang = Math.sin(now * 0.0001) * 0.45;
+      A.camera.position.set(Math.sin(ang) * 7.5, 1.6 + Math.sin(now * 0.0003) * 0.15, Math.cos(ang) * 7.5);
       A.camera.lookAt(0, 1.0, 0);
       A.render();
       frames++; acc += dt; if (acc > 1) { document.getElementById('fps').textContent = `${Math.round(frames / acc)} i/s`; frames = 0; acc = 0; }
       requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
-    window.__a3 = A;
+    window.__a3 = A; window.__f = { a, b, THREE };
   </script>
 </body>
 </html>
