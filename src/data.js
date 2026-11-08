@@ -76,7 +76,10 @@ export function makeTeam(canton, seed, level = 1) {
       name: n, canton,
       force: +(0.85 + r() * 0.35) * level, souffle: +(0.85 + r() * 0.35) * level, technique: +(0.85 + r() * 0.35) * level,
       style: styles[Math.floor(r() * 4)], skill: Math.min(0.9, 0.3 + r() * 0.35 + (level - 1) * 0.8),
-      look: { skin: SKINS[Math.floor(r() * SKINS.length)], cloth: r() < 0.5 ? '#2a2422' : '#3a2c22', band: BANDS[canton] || '#888', knot: r() < 0.4 },
+      look: { skin: SKINS[Math.floor(r() * SKINS.length)], cloth: ['#2a2422', '#3a2c22', '#1f2a3a', '#3b1f1f'][Math.floor(r() * 4)], band: BANDS[canton] || '#888', knot: r() < 0.4,
+        body: { build: 0.88 + r() * 0.34, height: 0.94 + r() * 0.12, head: 0.96 + r() * 0.08 },
+        face: { nose: 0.85 + r() * 0.35, jaw: 0.9 + r() * 0.25, brow: 0.8 + r() * 0.5, lips: 0.85 + r() * 0.35 },
+        hair: ['ras', 'ras', 'bald', 'twists', 'flat'][Math.floor(r() * 5)], beard: r() < 0.3, scar: r() < 0.2 },
     };
   });
 }

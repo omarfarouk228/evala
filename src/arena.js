@@ -172,56 +172,96 @@ function rock(g, x, y, s, m, r) {
 const CLOTH = ['#d4472e', '#f2b134', '#2e6fb5', '#f4efe4', '#1f8a5c', '#7b3fa0', '#e86f9a', '#2b2b30', '#e9e2cf', '#c2401f', '#3d9fd1', '#f08a24', '#6a8f2a', '#b81e4a'];
 const SKIN = ['#3b2418', '#4a2c1c', '#5a3622', '#2f1c12', '#6a4128'];
 
+function waxDots(g, x, y, w, h, c1, c2, r) {
+  g.fillStyle = c1; g.fillRect(x, y, w, h);
+  const s = Math.max(4, w / 4);
+  g.fillStyle = c2;
+  for (let i = -1; i < w / s + 1; i++) for (let j = -1; j < h / s + 1; j++) { const cx = x + i * s + (j % 2) * s / 2, cy = y + j * s; g.beginPath(); g.arc(cx, cy, s * 0.26, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 0; i < 6; i++) g.fillRect(x + r() * w, y, 1, h);
+}
+// Spectateur de face, dessiné une fois par variante et par image (0 : au repos, 1 : bras levés, 2 : balancement et chant)
 function person(g, x, y, h, v, frame) {
   const r = rng(v * 13 + 5);
   const skin = SKIN[Math.floor(r() * SKIN.length)];
-  const top = CLOTH[Math.floor(r() * CLOTH.length)];
-  const bottom = r() < 0.5 ? CLOTH[Math.floor(r() * CLOTH.length)] : '#2c3442';
-  const woman = r() < 0.48, child = r() < 0.18;
-  if (child) h *= 0.62;
-  const w = h * (0.28 + r() * 0.06);
-  const headR = h * 0.085;
-  const shoulderY = y - h * 0.78, hipY = y - h * 0.45;
-  g.lineCap = 'round';
-  // jambes / pagne
-  g.fillStyle = bottom;
-  if (woman) { g.beginPath(); g.moveTo(x - w * 0.42, hipY); g.lineTo(x - w * 0.36, y); g.lineTo(x + w * 0.36, y); g.lineTo(x + w * 0.42, hipY); g.fill(); }
-  else { g.fillRect(x - w * 0.36, hipY, w * 0.32, h * 0.45); g.fillRect(x + w * 0.04, hipY, w * 0.32, h * 0.45); }
-  // buste
-  const gt = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
-  gt.addColorStop(0, shade(top, 0.12)); gt.addColorStop(1, shade(top, -0.3));
-  g.fillStyle = gt;
-  g.beginPath(); g.moveTo(x - w / 2, shoulderY + h * 0.03); g.lineTo(x - w * 0.42, hipY + h * 0.04); g.lineTo(x + w * 0.42, hipY + h * 0.04); g.lineTo(x + w / 2, shoulderY + h * 0.03); g.quadraticCurveTo(x, shoulderY - h * 0.03, x - w / 2, shoulderY + h * 0.03); g.fill();
-  // bras : bas, ou levés (frame 1) pour applaudir / encourager
-  g.strokeStyle = skin; g.lineWidth = h * 0.06;
-  const up = frame === 1 && r() < 0.7;
-  if (up) {
-    g.beginPath(); g.moveTo(x - w * 0.42, shoulderY + h * 0.05); g.lineTo(x - w * 0.62, shoulderY - h * 0.18); g.lineTo(x - w * 0.5, shoulderY - h * 0.36); g.stroke();
-    g.beginPath(); g.moveTo(x + w * 0.42, shoulderY + h * 0.05); g.lineTo(x + w * 0.65, shoulderY - h * 0.16); g.lineTo(x + w * 0.55, shoulderY - h * 0.34); g.stroke();
+  const kind = r() < 0.42 ? 'femme' : r() < 0.6 ? 'homme' : r() < 0.75 ? 'jeune' : r() < 0.88 ? 'enfant' : 'ancien';
+  if (kind === 'enfant') h *= 0.6;
+  const c1 = CLOTH[Math.floor(r() * CLOTH.length)], c2 = CLOTH[Math.floor(r() * CLOTH.length)], c3 = CLOTH[Math.floor(r() * CLOTH.length)];
+  const w = h * (0.28 + r() * 0.05), headR = h * 0.085;
+  const sway = frame === 2 ? h * 0.025 : 0;
+  const shoulderY = y - h * 0.78, hipY = y - h * 0.46;
+  g.save(); g.translate(sway, 0);
+  // ombre
+  g.fillStyle = 'rgba(20,10,0,0.3)'; g.beginPath(); g.ellipse(x + h * 0.03, y, w * 0.9, h * 0.025, 0, 0, Math.PI * 2); g.fill();
+  // jambes ou pagne
+  if (kind === 'femme' || (kind === 'ancien' && r() < 0.5)) {
+    g.save(); g.beginPath(); g.moveTo(x - w * 0.48, hipY); g.lineTo(x - w * 0.6, y - h * 0.02); g.lineTo(x + w * 0.6, y - h * 0.02); g.lineTo(x + w * 0.48, hipY); g.closePath(); g.clip();
+    waxDots(g, x - w * 0.7, hipY - 2, w * 1.4, h * 0.5, c1, c2, r);
+    const lg = g.createLinearGradient(x - w * 0.6, 0, x + w * 0.6, 0); lg.addColorStop(0, 'rgba(255,255,255,0.18)'); lg.addColorStop(0.5, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(0,0,0,0.35)'); g.fillStyle = lg; g.fillRect(x - w, hipY - 2, w * 2, h * 0.5);
+    g.restore();
   } else {
-    g.beginPath(); g.moveTo(x - w * 0.45, shoulderY + h * 0.05); g.lineTo(x - w * 0.55, hipY + h * 0.02); g.stroke();
-    g.beginPath(); g.moveTo(x + w * 0.45, shoulderY + h * 0.05); g.lineTo(x + w * 0.52, hipY); g.stroke();
+    const tr = kind === 'jeune' ? '#2c3442' : kind === 'ancien' ? '#e9e2cf' : ['#2c3442', '#4a4a4a', '#5a4a3a', '#1f3a5a'][Math.floor(r() * 4)];
+    for (const k of [-1, 1]) { const gl = g.createLinearGradient(x + k * w * 0.2 - w * 0.17, 0, x + k * w * 0.2 + w * 0.17, 0); gl.addColorStop(0, shade(tr, 0.15)); gl.addColorStop(1, shade(tr, -0.3)); g.fillStyle = gl; g.beginPath(); g.roundRect(x + k * w * 0.2 - w * 0.17, hipY - 2, w * 0.34, h * 0.45, w * 0.08); g.fill(); }
   }
-  // tête et coiffe
-  g.fillStyle = skin; g.beginPath(); g.arc(x, shoulderY - headR * 1.15, headR, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#1a1a1a'; for (const k of [-1, 1]) { g.beginPath(); g.ellipse(x + k * w * 0.2, y - h * 0.01, w * 0.2, h * 0.016, 0, 0, Math.PI * 2); g.fill(); }
+  // buste
+  const top = kind === 'jeune' && r() < 0.5 ? '#c8102e' : c3;
+  const tg = g.createLinearGradient(x - w / 2, 0, x + w / 2, 0); tg.addColorStop(0, shade(top, 0.18)); tg.addColorStop(0.5, top); tg.addColorStop(1, shade(top, -0.32));
+  g.fillStyle = tg;
+  if (kind === 'ancien') { g.beginPath(); g.moveTo(x - w * 0.75, shoulderY + h * 0.04); g.lineTo(x - w * 0.9, y - h * 0.08); g.lineTo(x + w * 0.9, y - h * 0.08); g.lineTo(x + w * 0.75, shoulderY + h * 0.04); g.quadraticCurveTo(x, shoulderY - h * 0.02, x - w * 0.75, shoulderY + h * 0.04); g.fill(); g.strokeStyle = '#b08a4b'; g.lineWidth = h * 0.008; g.beginPath(); g.moveTo(x - w * 0.2, shoulderY + h * 0.02); g.quadraticCurveTo(x, shoulderY + h * 0.14, x + w * 0.2, shoulderY + h * 0.02); g.stroke(); }
+  else { g.beginPath(); g.moveTo(x - w * 0.55, shoulderY + h * 0.03); g.lineTo(x - w * 0.45, hipY + h * 0.03); g.lineTo(x + w * 0.45, hipY + h * 0.03); g.lineTo(x + w * 0.55, shoulderY + h * 0.03); g.quadraticCurveTo(x, shoulderY - h * 0.02, x - w * 0.55, shoulderY + h * 0.03); g.fill(); }
+  if (kind === 'femme' && r() < 0.6) { g.save(); g.beginPath(); g.moveTo(x - w * 0.55, shoulderY + h * 0.03); g.lineTo(x - w * 0.45, hipY + h * 0.03); g.lineTo(x + w * 0.45, hipY + h * 0.03); g.lineTo(x + w * 0.55, shoulderY + h * 0.03); g.closePath(); g.clip(); waxDots(g, x - w * 0.6, shoulderY, w * 1.2, h * 0.36, c1, c2, r); g.restore(); }
+  if (kind === 'jeune' && top === '#c8102e') { g.fillStyle = '#fff'; g.font = `700 ${h * 0.08}px sans-serif`; g.textAlign = 'center'; g.fillText(String(7 + Math.floor(r() * 4)), x, hipY - h * 0.06); }
+  // plis et ombre du cou
+  g.fillStyle = 'rgba(0,0,0,0.18)'; g.beginPath(); g.ellipse(x, shoulderY + h * 0.03, w * 0.22, h * 0.03, 0, 0, Math.PI * 2); g.fill();
+  // bébé au dos pour certaines femmes
+  const baby = kind === 'femme' && r() < 0.25;
+  if (baby) { g.fillStyle = c2; g.beginPath(); g.roundRect(x - w * 0.3, shoulderY + h * 0.02, w * 0.6, h * 0.22, w * 0.15); g.fill(); g.fillStyle = skin; g.beginPath(); g.arc(x + w * 0.1, shoulderY + h * 0.01, headR * 0.55, 0, Math.PI * 2); g.fill(); }
+  // bras
+  g.strokeStyle = skin; g.lineWidth = h * 0.055; g.lineCap = 'round';
+  const sleeve = kind === 'ancien' ? 0.9 : 0.35;
+  const armUp = frame === 1 || (frame === 2 && r() < 0.4);
+  const phone = kind === 'jeune' && r() < 0.4;
+  const arm = (k, up) => {
+    const sx = x + k * w * 0.5, sy = shoulderY + h * 0.05;
+    const ex = up ? sx + k * w * 0.45 : sx + k * w * 0.12, ey = up ? sy - h * 0.14 : sy + h * 0.18;
+    const hx = up ? sx + k * w * 0.3 : sx + k * w * 0.2, hy = up ? sy - h * 0.36 : hipY + h * 0.02;
+    g.strokeStyle = skin; g.lineWidth = h * 0.05; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
+    g.strokeStyle = top; g.lineWidth = h * 0.064; g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + (ex - sx) * sleeve, sy + (ey - sy) * sleeve); g.stroke();
+    g.fillStyle = shade(skin, 0.1); g.beginPath(); g.arc(hx, hy, h * 0.03, 0, Math.PI * 2); g.fill();
+    if (phone && up && k === 1) { g.fillStyle = '#111'; g.fillRect(hx - h * 0.02, hy - h * 0.06, h * 0.04, h * 0.07); g.fillStyle = '#9fd0ea'; g.fillRect(hx - h * 0.015, hy - h * 0.055, h * 0.03, h * 0.055); }
+  };
+  arm(-1, armUp); arm(1, armUp || (phone && frame !== 0));
+  if (kind === 'ancien' && !armUp) { g.strokeStyle = '#5a3a1a'; g.lineWidth = h * 0.015; g.beginPath(); g.moveTo(x + w * 0.7, hipY + h * 0.02); g.lineTo(x + w * 0.75, y - h * 0.02); g.stroke(); }
+  // cou et tête
+  g.fillStyle = shade(skin, -0.2); g.fillRect(x - headR * 0.4, shoulderY - headR * 0.6, headR * 0.8, headR * 0.8);
+  const hy = shoulderY - headR * 1.2;
+  const hg = g.createRadialGradient(x - headR * 0.35, hy - headR * 0.4, headR * 0.1, x, hy, headR * 1.1); hg.addColorStop(0, shade(skin, 0.28)); hg.addColorStop(0.7, skin); hg.addColorStop(1, shade(skin, -0.45));
+  g.fillStyle = hg; g.beginPath(); g.ellipse(x, hy, headR * 0.9, headR, 0, 0, Math.PI * 2); g.fill();
+  // visage : yeux, sourcils, nez, bouche (ouverte quand on chante ou crie)
+  const sing = frame !== 0;
+  for (const k of [-1, 1]) { g.fillStyle = '#efe4d6'; g.beginPath(); g.ellipse(x + k * headR * 0.36, hy - headR * 0.08, headR * 0.17, headR * 0.1, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#120804'; g.beginPath(); g.arc(x + k * headR * 0.34, hy - headR * 0.07, headR * 0.075, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#120804'; g.lineWidth = headR * 0.07; g.beginPath(); g.moveTo(x + k * headR * 0.55, hy - headR * 0.28); g.lineTo(x + k * headR * 0.18, hy - headR * (sing ? 0.36 : 0.3)); g.stroke(); }
+  g.fillStyle = 'rgba(20,6,2,0.5)'; g.beginPath(); g.ellipse(x, hy + headR * 0.18, headR * 0.16, headR * 0.08, 0, 0, Math.PI * 2); g.fill();
+  if (sing) { g.fillStyle = '#2a0e08'; g.beginPath(); g.ellipse(x, hy + headR * 0.5, headR * 0.2, headR * 0.22, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#efe6da'; g.fillRect(x - headR * 0.16, hy + headR * 0.3, headR * 0.32, headR * 0.08); }
+  else { g.strokeStyle = 'rgba(20,6,2,0.6)'; g.lineWidth = headR * 0.07; g.beginPath(); g.moveTo(x - headR * 0.22, hy + headR * 0.48); g.quadraticCurveTo(x, hy + headR * 0.62, x + headR * 0.22, hy + headR * 0.48); g.stroke(); }
+  // cheveux, foulard, chapeau, casquette
   const hat = r();
-  if (woman && hat < 0.55) { // foulard noué
-    g.fillStyle = CLOTH[Math.floor(r() * CLOTH.length)];
-    g.beginPath(); g.ellipse(x, shoulderY - headR * 1.7, headR * 1.15, headR * 0.75, 0, Math.PI, 0); g.fill();
-  } else if (!woman && hat < 0.3) { // casquette
-    g.fillStyle = CLOTH[Math.floor(r() * CLOTH.length)];
-    g.beginPath(); g.arc(x, shoulderY - headR * 1.3, headR * 1.02, Math.PI, 0); g.fill();
-    g.fillRect(x, shoulderY - headR * 1.4, headR * 1.3, headR * 0.25);
-  } else if (!woman && hat < 0.42) { // chapeau de paille
-    g.fillStyle = '#c9a463'; g.beginPath(); g.ellipse(x, shoulderY - headR * 1.75, headR * 1.9, headR * 0.35, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(x, shoulderY - headR * 1.8, headR * 0.85, Math.PI, 0); g.fill();
+  if (kind === 'femme') {
+    g.save(); g.beginPath(); g.ellipse(x, hy - headR * 0.55, headR * 1.2, headR * 0.85, 0, Math.PI, 0); g.lineTo(x + headR * 1.2, hy - headR * 0.3); g.lineTo(x - headR * 1.2, hy - headR * 0.3); g.closePath(); g.clip();
+    waxDots(g, x - headR * 1.3, hy - headR * 1.5, headR * 2.6, headR * 1.3, c2, c1, r); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(x + headR * 0.3, hy - headR * 1.5, headR, headR * 1.3); g.restore();
+    g.fillStyle = shade(c2, -0.1); g.beginPath(); g.ellipse(x + headR * 0.7, hy - headR * 1.15, headR * 0.4, headR * 0.28, -0.5, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#e8b84a'; g.lineWidth = headR * 0.08; for (const k of [-1, 1]) { g.beginPath(); g.arc(x + k * headR * 0.85, hy + headR * 0.35, headR * 0.14, 0, Math.PI * 2); g.stroke(); }
+  } else if (kind === 'ancien' && hat < 0.7) {
+    g.fillStyle = ['#c9a463', '#e9e2cf', '#2b2b30'][Math.floor(r() * 3)]; g.beginPath(); g.ellipse(x, hy - headR * 0.75, headR * 1.7, headR * 0.3, 0, 0, Math.PI * 2); g.fill(); g.beginPath(); g.roundRect(x - headR * 0.85, hy - headR * 1.55, headR * 1.7, headR * 0.85, headR * 0.2); g.fill();
+    g.fillStyle = 'rgba(200,200,200,0.5)'; g.beginPath(); g.ellipse(x, hy - headR * 0.4, headR * 0.9, headR * 0.5, 0, Math.PI, 0); g.fill();
+  } else if (kind === 'jeune' && hat < 0.5) {
+    g.fillStyle = CLOTH[Math.floor(r() * CLOTH.length)]; g.beginPath(); g.arc(x, hy - headR * 0.25, headR * 0.98, Math.PI, 0); g.fill(); g.fillRect(x - headR * 0.2, hy - headR * 0.35, headR * 1.5, headR * 0.22);
+  } else {
+    g.fillStyle = '#120a06'; g.beginPath(); g.ellipse(x, hy - headR * 0.3, headR * 0.95, headR * 0.72, 0, Math.PI, 0); g.fill();
+    g.fillStyle = 'rgba(160,130,110,0.2)'; for (let i = 0; i < 12; i++) g.fillRect(x - headR * 0.8 + r() * headR * 1.6, hy - headR * 0.95 + r() * headR * 0.5, 1.5, 1.5);
   }
-  // parapluie (soleil ou pluie de juillet)
-  if (!child && r() < 0.06) {
-    const uc = CLOTH[Math.floor(r() * CLOTH.length)];
-    g.strokeStyle = '#222'; g.lineWidth = h * 0.015; g.beginPath(); g.moveTo(x + w * 0.4, shoulderY); g.lineTo(x + w * 0.4, y - h * 1.18); g.stroke();
-    g.fillStyle = uc; g.beginPath(); g.ellipse(x + w * 0.4, y - h * 1.16, h * 0.42, h * 0.18, 0, Math.PI, 0); g.fill();
-  }
+  // parapluie pour quelques-uns
+  if (kind !== 'enfant' && !armUp && r() < 0.08) { const uc = CLOTH[Math.floor(r() * CLOTH.length)]; g.strokeStyle = '#222'; g.lineWidth = h * 0.012; g.beginPath(); g.moveTo(x + w * 0.5, shoulderY); g.lineTo(x + w * 0.5, y - h * 1.2); g.stroke(); g.fillStyle = uc; g.beginPath(); g.ellipse(x + w * 0.5, y - h * 1.18, h * 0.4, h * 0.17, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(x + w * 0.5, y - h * 1.18, h * 0.4, h * 0.17, 0, Math.PI, Math.PI * 1.5); g.fill(); }
+  g.restore();
 }
 
 // ------------------------------------------------------------------ arène
@@ -411,9 +451,9 @@ export class Arena {
     // Foule : rangées derrière l'aire de lutte (parallaxe), animation par images
     this.sprites = [];
     const SH = h * 0.2;
-    for (let v = 0; v < 36; v++) {
-      const pair = [0, 1].map(fr => { const c = canvas(SH * 0.9, SH * 1.35); person(c.getContext('2d'), c.width / 2, c.height - 2, SH, v, fr); return c; });
-      this.sprites.push(pair);
+    for (let v = 0; v < 48; v++) {
+      const set = [0, 1, 2].map(fr => { const c = canvas(SH * 1.0, SH * 1.4); person(c.getContext('2d'), c.width / 2, c.height - 2, SH, v, fr); return c; });
+      this.sprites.push(set);
     }
     this.crowd = [];
     const rows = [
@@ -428,8 +468,12 @@ export class Arena {
       for (let i = 0; i < row.n; i++) {
         const xm = (i / row.n - 0.5) * span + (r() - 0.5) * 0.6;
         if (Math.abs(xm) < 1.3 && row === rows[2] && r() < 0.6) continue;
-        this.crowd.push({ xm, y: row.y + (r() - 0.5) * h * 0.012, s: row.s * (0.85 + r() * 0.3), p: row.p, v: Math.floor(r() * 36), ph: r() * 10, sp: 0.6 + r() * 1.4, dark: row.dark });
+        this.crowd.push({ xm, y: row.y + (r() - 0.5) * h * 0.012, s: row.s * (0.85 + r() * 0.3), p: row.p, v: Math.floor(r() * 48), ph: r() * 10, sp: 0.6 + r() * 1.4, dark: row.dark });
       }
+    }
+    // les familles des lutteurs chantent en rang, au bord de l'aire, en se balançant ensemble
+    if (!this.empty && !this.few) {
+      for (const [x0, v] of [[-4.2, 3], [2.6, 9]]) for (let i = 0; i < 7; i++) this.crowd.push({ xm: x0 + i * 0.42, y: rows[2].y + h * 0.01, s: rows[2].s * 1.05, p: rows[2].p, v, ph: 0, sp: 1.1, dark: 0, fam: true });
     }
     this.crowd.sort((a, b) => a.y - b.y);
     // bâche des officiels et chaises en plastique
@@ -493,10 +537,12 @@ export class Arena {
       const lz = 1 + (z - 1) * c.p;
       const x = w / 2 + (c.xm - cam.x * c.p) * this.ppm * lz * 0.62;
       if (x < -80 || x > w + 80) continue;
-      const fr = (Math.sin(t * c.sp * (1 + excite * 2) + c.ph) > (0.55 - excite * 0.6)) ? 1 : 0;
+      let fr = (Math.sin(t * c.sp * (1 + excite * 2) + c.ph) > (0.55 - excite * 0.6)) ? 1 : 0;
+      if (c.fam) fr = Math.sin(t * 2.2) > 0 ? 2 : 0;
+      else if (fr === 0 && excite > 0.3 && Math.sin(t * c.sp * 1.7 + c.ph * 2) > 0.3) fr = 2;
       const sp = this.sprites[c.v][fr];
       const s = c.s * lz;
-      const bob = Math.abs(Math.sin(t * c.sp * 3 + c.ph)) * 3 * excite;
+      const bob = Math.abs(Math.sin(t * c.sp * 3 + c.ph)) * 3 * excite + (c.fam ? Math.abs(Math.sin(t * 2.2)) * 2 : 0);
       const y = c.y + (c.y - this.horizon) * (lz - 1) * 0.6;
       ctx.drawImage(sp, x - sp.width * s / 2, y - sp.height * s - bob, sp.width * s, sp.height * s);
       if (c.dark > 0) { /* la brume est appliquée globalement */ }

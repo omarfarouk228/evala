@@ -1,7 +1,7 @@
 // Évala : la saison des lutteurs. Écrans, aventure sur trois ans, combats.
 import { Arena } from './arena.js';
 import { makeWrestler, makeBout, makeAI, think, command, step, simulate } from './combat.js';
-import { makeVis, updateVis, drawPair } from './fighter.js';
+import { makeVis, updateVis, drawPair, drawFighter } from './fighter.js';
 import { ACTIVITIES, makeTeam, dateLabel, HOME, BANDS, PLAYER, SKINS, FIRST_YEAR, ARCADE, ROUNDS, roundLabel, bracketFor } from './data.js';
 import { initAudio, setCrowd, startMusic, stopMusic, sfx, setAmbience, setMuted, muted } from './audio.js';
 
@@ -72,10 +72,89 @@ function backdrop(key, opts) {
 }
 
 let scene = null, last = performance.now();
+let loopErr = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (scene) { scene.update(dt); scene.draw(); }
+  try { if (scene) { scene.update(dt); scene.draw(); } }
+  catch (e) { if (loopErr++ < 3) console.error(e); }
   requestAnimationFrame(loop);
+}
+
+// ------------------------------------------------------------------ cinématiques
+// Travelling lent sur un décor, bandes noires et légende ; clic pour passer.
+function cine(o) {
+  const s = backdrop(o.key, o.opts);
+  const from = o.from || { x: -3, zoom: 1.0 }, to = o.to || { x: 3, zoom: 1.08 };
+  const dur = o.dur || 6; let t = 0, done = false;
+  s.exc = o.exc || 0;
+  s.update = (dt) => {
+    t += dt; s.t += dt; const k = Math.min(1, t / dur), e = k * k * (3 - 2 * k);
+    s.cam.x = from.x + (to.x - from.x) * e; s.cam.zoom = from.zoom + (to.zoom - from.zoom) * e;
+    if (k >= 1) finish();
+  };
+  s.draw = () => { s.arena.drawBack(ctx, s.cam, s.t, s.exc); s.arena.drawFront(ctx, s.cam, 1 / 60, s.exc); };
+  const el = $('cine'); el.hidden = false; $('caption').textContent = o.caption || '';
+  const finish = () => { if (done) return; done = true; el.hidden = true; el.onclick = null; o.cb && o.cb(); };
+  el.onclick = finish;
+  clearScreen();
+  return s;
+}
+
+// Scène de la cérémonie : podium devant la bâche des chefs, champion bras levés, coéquipiers, moto du super Évala, fanions
+function ceremonyScene(champ, mates, mood = 'aprem') {
+  const key = `cere-${mood}`;
+  const s = { t: 0, cam: { x: -0.4, zoom: 1.1 }, key };
+  s.onResize = () => { s.arena = getArena(key, { mood, seed: 5 }); };
+  s.onResize();
+  const fake = { clinch: false, phase: 'ended' };
+  const mk = (f, x, dir, act) => { const w = makeWrestler({ ...f, look: f.look }); w.x = x; w.dir = dir; w.act = act; w.actT = 0; w.stamina = 1; w.input = 0; return w; };
+  const C = mk(champ, 0, 1, 'win'), A = mk(mates[0], -1.5, 1, 'idle'), B = mk(mates[1], 1.5, -1, 'idle');
+  const vis = { C: makeVis(), A: makeVis(), B: makeVis() };
+  s.amb = 'arena'; setAmbience('arena'); setCrowd(0.9, 0.8); startMusic(0.5);
+  s.update = (dt) => {
+    s.t += dt;
+    updateVis(vis.C, C, A, fake, dt); updateVis(vis.A, A, C, fake, dt); updateVis(vis.B, B, C, fake, dt);
+    // le champion salue : bras levés, puis une main sur le cœur
+    C.act = Math.sin(s.t * 0.6) > -0.3 ? 'win' : 'idle';
+    s.cam.zoom = 1.1 + Math.sin(s.t * 0.25) * 0.03; s.cam.x = -0.4 + Math.sin(s.t * 0.2) * 0.3;
+  };
+  s.draw = () => {
+    const ar = s.arena, cam = s.cam, ppm = ar.ppm * cam.zoom;
+    ar.drawBack(ctx, cam, s.t, 0.9);
+    // podium de planches
+    const x0 = ar.screenX(-2.2, cam), x1 = ar.screenX(2.2, cam), gy = ar.groundY, hgt = 0.22 * ppm;
+    ctx.fillStyle = 'rgba(30,10,2,0.35)'; ctx.beginPath(); ctx.ellipse((x0 + x1) / 2 + ppm * 0.3, gy + 2, (x1 - x0) * 0.56, ppm * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+    const pg = ctx.createLinearGradient(0, gy - hgt, 0, gy); pg.addColorStop(0, '#b98a52'); pg.addColorStop(1, '#6b4a2e');
+    ctx.fillStyle = pg; ctx.fillRect(x0, gy - hgt, x1 - x0, hgt);
+    ctx.fillStyle = '#d4a86a'; ctx.fillRect(x0, gy - hgt, x1 - x0, hgt * 0.14);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; for (let k = 1; k < 10; k++) { ctx.beginPath(); ctx.moveTo(x0 + (x1 - x0) * k / 10, gy - hgt); ctx.lineTo(x0 + (x1 - x0) * k / 10, gy); ctx.stroke(); }
+    // nappe aux couleurs du canton sur le devant
+    ctx.fillStyle = champ.look.band; ctx.fillRect(x0 + (x1 - x0) * 0.3, gy - hgt, (x1 - x0) * 0.4, hgt * 0.5);
+    // la moto du super Évala, rubans
+    const mx = ar.screenX(3.6, cam), my = gy, ms = ppm * 0.75;
+    ctx.fillStyle = 'rgba(30,10,2,0.35)'; ctx.beginPath(); ctx.ellipse(mx, my, ms * 0.95, ms * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    for (const k of [-0.55, 0.55]) { ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(mx + k * ms, my - ms * 0.25, ms * 0.25, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#9a9a9a'; ctx.beginPath(); ctx.arc(mx + k * ms, my - ms * 0.25, ms * 0.1, 0, Math.PI * 2); ctx.fill(); }
+    const bg = ctx.createLinearGradient(0, my - ms * 0.9, 0, my - ms * 0.3); bg.addColorStop(0, '#f05a3a'); bg.addColorStop(1, '#9a1f10'); ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.moveTo(mx - ms * 0.6, my - ms * 0.42); ctx.lineTo(mx + ms * 0.15, my - ms * 0.5); ctx.lineTo(mx + ms * 0.4, my - ms * 0.78); ctx.lineTo(mx + ms * 0.6, my - ms * 0.74); ctx.lineTo(mx + ms * 0.5, my - ms * 0.35); ctx.lineTo(mx - ms * 0.4, my - ms * 0.3); ctx.fill();
+    ctx.fillStyle = '#222'; ctx.fillRect(mx - ms * 0.55, my - ms * 0.58, ms * 0.5, ms * 0.1);
+    ctx.strokeStyle = '#bbb'; ctx.lineWidth = ms * 0.035; ctx.beginPath(); ctx.moveTo(mx + ms * 0.5, my - ms * 0.78); ctx.lineTo(mx + ms * 0.4, my - ms * 1.0); ctx.lineTo(mx + ms * 0.2, my - ms * 1.02); ctx.stroke();
+    ctx.fillStyle = '#eee'; ctx.beginPath(); ctx.arc(mx + ms * 0.58, my - ms * 0.62, ms * 0.07, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 3; i++) { ctx.strokeStyle = ['#e8b04a', '#f4efe4', '#b5582f'][i]; ctx.lineWidth = ms * 0.03; ctx.beginPath(); ctx.moveTo(mx + ms * 0.3, my - ms * 1.0); ctx.quadraticCurveTo(mx + ms * (0.1 - i * 0.1), my - ms * (0.9 - i * 0.05) + Math.sin(s.t * 3 + i) * ms * 0.05, mx - ms * (0.1 + i * 0.12), my - ms * (0.75 - i * 0.08)); ctx.stroke(); }
+    // lutteurs sur le podium (le sol est remonté de la hauteur du podium)
+    const lift = { ...ar, groundY: gy - hgt, screenX: ar.screenX.bind(ar) };
+    const trio = [[C, vis.C], [A, vis.A], [B, vis.B]];
+    for (const layer of ['shadow', 'far', 'body', 'near']) for (const [w, v] of trio) drawFighter(ctx, lift, cam, w, C, v, fake, layer, ar.mood.light);
+    // guirlande de fanions aux couleurs des cantons
+    const y0 = H * 0.12; ctx.lineWidth = 2;
+    for (const seg of [[-0.05, 0.5], [0.5, 1.05]]) {
+      const ax = seg[0] * W, bx = seg[1] * W, sag = H * 0.06;
+      ctx.strokeStyle = 'rgba(40,30,20,0.8)'; ctx.beginPath(); ctx.moveTo(ax, y0); ctx.quadraticCurveTo((ax + bx) / 2, y0 + sag * 2, bx, y0); ctx.stroke();
+      const cols = Object.values(BANDS);
+      for (let i = 0; i < 16; i++) { const t = (i + 0.5) / 16, px = ax + (bx - ax) * t, py = y0 + 2 * sag * t * (1 - t) * 2 * 0.5 + sag * 4 * t * (1 - t) * 0.5; const wob = Math.sin(s.t * 3 + i) * 3; ctx.fillStyle = cols[i % cols.length]; ctx.beginPath(); ctx.moveTo(px - 12 * DPR, py); ctx.lineTo(px + 12 * DPR, py); ctx.lineTo(px + wob, py + 26 * DPR); ctx.closePath(); ctx.fill(); }
+    }
+    ar.drawFront(ctx, cam, 1 / 60, 0.9);
+  };
+  return s;
 }
 
 // ------------------------------------------------------------------ entrées
@@ -291,7 +370,7 @@ function tutorial() {
 }
 
 // ------------------------------------------------------------------ écrans
-function show(html, dim = true) { screen.className = `screen${dim ? ' dim' : ''}`; screen.innerHTML = html; }
+function show(html, dim = true) { screen.className = `screen${dim ? ' dim' : ''}${html.includes('class="card wide ceremony"') ? ' cere' : ''}`; screen.innerHTML = html; }
 function clearScreen() { screen.innerHTML = ''; }
 
 function titleScreen() {
@@ -336,6 +415,10 @@ function adventureMenu() {
 }
 
 function intro() {
+  scene = cine({ key: 'village', opts: { mood: 'matin', empty: true, seed: 21 }, from: { x: -4, zoom: 1.0 }, to: { x: 2, zoom: 1.1 }, dur: 7,
+    caption: 'Landa, pays kabyè. Les premières pluies ont verdi les collines. Juillet est le mois où les garçons deviennent des hommes.', cb: introCard });
+}
+function introCard() {
   scene = backdrop('village', { mood: 'matin', empty: true, seed: 21 });
   show(`<div class="card">
     <div class="kick">Landa · ${dateLabel(1, yr())} · année 1</div>
@@ -350,14 +433,14 @@ function intro() {
     clearScreen();
     scene = fightScene({
       mood: 'matin', empty: true, tutorial: true, label: 'Entraînement', title: 'Sur la place', subtitle: 'Pyabalo t\'apprend les gestes', timeLimit: 999,
-      a: playerFighter(), b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#3a2014', cloth: '#30261f', band: BANDS[HOME] } },
+      a: playerFighter(), b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#5e321d', cloth: '#30261f', band: BANDS[HOME], body: { build: 1.12, height: 1.05, head: 1 }, face: { nose: 1.05, jaw: 1.1, brow: 1.2, lips: 1 }, hair: 'bald', beard: true } },
       onEnd: () => { G.tutoDone = true; G.stats.technique += 0.03; save(); planDay(); },
     });
   };
 }
 
 function playerFighter() {
-  return { name: PLAYER.name, canton: HOME, ...G.stats, look: { skin: SKINS[0], cloth: '#2a2422', band: BANDS[HOME], knot: true } };
+  return { name: PLAYER.name, canton: HOME, ...G.stats, look: { skin: SKINS[0], cloth: '#2a2422', band: BANDS[HOME], knot: true, body: { build: 0.98 + Math.min(0.2, (G.stats.force - 0.9) * 0.4), height: 1.02, head: 1 }, face: { nose: 0.95, jaw: 1.02, brow: 1.1, lips: 1 }, hair: 'ras' } };
 }
 
 function resume() {
@@ -477,7 +560,8 @@ function veille() {
     <p>Au soir, les évalous de Landa quittent leurs familles avec leurs maîtres pour un lieu retiré, interdit aux femmes et aux enfants. Ce qui s'y passe appartient aux initiés : le jeu ne le montre pas.</p>
     <p>Demain, l'Évala commence. Les familles iront à l'arène avec leurs chants.</p>
     <div class="row" style="justify-content:flex-end"><button class="btn hot" id="b-next">Aller à l'arène</button></div></div>`);
-  $('b-next').onclick = tournamentStart;
+  $('b-next').onclick = () => { scene = cine({ key: 'm0', opts: { mood: 'aprem', seed: 3 }, from: { x: 4, zoom: 1.0 }, to: { x: -3, zoom: 1.12 }, dur: 7, exc: 0.5,
+    caption: 'Samedi. Les familles de Landa marchent vers le terrain avec leurs chants. Les aînés prennent place. Les tambours ont commencé.', cb: tournamentStart }); };
 }
 
 // ------------------------------------------------------------------ tournoi
@@ -684,13 +768,18 @@ function ceremony() {
   ];
   G.record.awards = undefined;
   G.awards = (G.awards || []).concat(awards.filter(a => a.me).map(a => ({ year: G.year, k: a.k })));
-  scene = backdrop('m2', { mood: 'aprem', seed: 5 });
-  show(`<div class="card wide ceremony"><div class="kick">Évala ${yr()} · cérémonie de clôture · grand terrain de Kara</div><h2>Remise des prix</h2>
+  const champTeam = makeTeam(champName, 77 + G.year, 1);
+  const champF = meChamp ? playerFighter() : champTeam[1];
+  clearScreen();
+  scene = ceremonyScene(champF, [champTeam[0], champTeam[2]]);
+  $('cine').hidden = false; $('caption').textContent = `Grand terrain de Kara. Sous la bâche, les chefs traditionnels de la Kozah. ${champName} est porté en triomphe.`;
+  $('cine').onclick = null;
+  setTimeout(() => { $('cine').hidden = true; show(`<div class="card wide ceremony"><div class="kick">Évala ${yr()} · cérémonie de clôture · grand terrain de Kara</div><h2>Remise des prix</h2>
     <p class="dim">Sous la bâche, les chefs traditionnels de la Kozah et les autorités. Les sages ont arbitré huit jours de luttes.</p>
     <div class="awards">${awards.map((a, i) => `<div class="award ${a.me ? 'me' : ''}" style="animation-delay:${0.6 + i * 1.4}s"><small>${a.k}</small><b>${a.v}</b><span>${a.d}</span></div>`).join('')}</div>
     <div class="row" style="justify-content:flex-end"><button class="btn hot" id="b-n">Continuer</button></div></div>`);
   awards.forEach((a, i) => setTimeout(() => sfx(a.me ? 'cheer' : 'slap', a.me ? 1 : 0.5), 600 + i * 1400));
-  $('b-n').onclick = () => { G.phase = 'annee'; save(); yearEnd(); };
+  $('b-n').onclick = () => { G.phase = 'annee'; save(); yearEnd(); }; }, 7500);
 }
 
 function yearEnd() {
@@ -713,6 +802,11 @@ const INTERLUDES = [
 ];
 
 function newYear() {
+  const txt = INTERLUDES[G.year - 1];
+  scene = cine({ key: 'village', opts: { mood: 'matin', empty: true, seed: 21 }, from: { x: 3, zoom: 1.12 }, to: { x: -3, zoom: 1.0 }, dur: 7,
+    caption: txt, cb: () => newYearCard() });
+}
+function newYearCard() {
   const txt = INTERLUDES[G.year - 1];
   G.year++; G.day = 1; G.phase = 'prep'; G.fatigue = 0; G.yb = { won: 0, lost: 0 }; G.br = null;
   // une année de travaux et de croissance
@@ -804,7 +898,7 @@ function freeTraining() {
     scene = fightScene({
       mood: 'matin', empty: true, tutorial: true, label: 'Leçon', title: 'Sur la place', subtitle: 'Pyabalo t\'apprend les gestes', timeLimit: 999,
       a: { name: PLAYER.name, canton: HOME, force: 1, souffle: 1, technique: 1, look: { skin: SKINS[0], cloth: '#2a2422', band: BANDS[HOME], knot: true } },
-      b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#3a2014', cloth: '#30261f', band: BANDS[HOME] } },
+      b: { name: 'Pyabalo', canton: HOME, force: 1.0, souffle: 1.0, technique: 1.0, style: 'patient', skill: 0.35, look: { skin: '#5e321d', cloth: '#30261f', band: BANDS[HOME], body: { build: 1.12, height: 1.05, head: 1 }, face: { nose: 1.05, jaw: 1.1, brow: 1.2, lips: 1 }, hair: 'bald', beard: true } },
       onEnd: () => freeTraining(),
     });
   };
