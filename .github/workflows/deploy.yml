@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build:
+    # Pages n'est disponible qu'une fois le dépôt public (compte gratuit)
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
