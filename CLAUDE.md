@@ -29,6 +29,15 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - `src/data.js` : cantons de la Kozah, prénoms, activités, dates (2e au 3e samedi de juillet, calculées par année), tableau à 8, arcade.
 - `src/main.js` : écrans et déroulé (menu, aventure, préparation, tournoi, cérémonie, arcade, entraînement, tutoriel), sauvegarde.
 
+## v0.2 (2026-11-08, même jour) : ce qui a été ajouté
+- **Lutteurs** : morphologies par lutteur (`look.body` : build, height, head), visages (`look.face` : nose, jaw, brow, lips), cheveux (`ras`, `bald`, `twists`, `flat`), barbe, cicatrice ; mains à quatre doigts et pouce (ouvertes ou crochetées), pieds avec orteils ; **expressions** (effort : yeux plissés, dents serrées ; chute : cri ; victoire : sourire) ; **chute articulée** (genoux, buste, bras) ; sable collé à la peau après une chute et gouttes de sueur quand le souffle manque (`skinExtras`).
+- **Foule** : `person()` redessiné de face avec visages, foulards en wax, chapeaux, casquettes, bébés au dos, téléphones levés, parapluies ; 48 variantes et 3 images (repos, bras levés, balancement en chantant) ; **familles des lutteurs** en rang au bord de l'aire, qui se balancent ensemble (`fam: true`).
+- **Cérémonie en scène** (`ceremonyScene`) : podium, champion bras levés, deux coéquipiers, moto du super Évala avec rubans, guirlande de fanions aux couleurs des cantons, foule en liesse ; la remise des prix s'affiche ensuite en bas d'écran, scène visible derrière.
+- **Cinématiques** (`cine()`) : travelling lent, bandes noires, légende, clic pour passer. Utilisées au début de l'aventure, la veille du tournoi (marche vers le terrain) et au passage d'une année.
+- La boucle de rendu est protégée (`try/catch`) : une erreur de dessin ne fige plus le jeu.
+- Correctif : au deuxième tour d'une rencontre, le cinquième combat est joué par un coéquipier (plantage `simulate(null)` auparavant).
+- Testé en partie complète scriptée dans Chrome : préparation, tournoi (y compris élimination et suite depuis la foule), cérémonie, bilan, passage à l'année 2. **Non testé sur mobile.**
+
 ## Le jeu (v0.1, 2026-11-08)
 - **Menu** : Aventure, Arcade, Entraînement.
 - **Aventure** : trois Évala, de 2026 à 2028 (évalou de 1re, 2e puis 3e année, puis **Eskpa**). Chaque année :
@@ -53,8 +62,8 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - **Approximations à signaler** : couleurs de ceinture par canton (convention du jeu) ; tenue (short ou cache-sexe sobre, ruban au genou) faute de source ; instruments génériques (les sources disent seulement « chants, percussions ») ; prénoms kabyè à faire relire ; tableau à 8 simplifié (les sources divergent sur le classement) ; prix de la cérémonie inspirés de la moto du super Évala.
 
 ## Pistes
-- Cinématiques entre les années (aube sur les monts kabyè, harmattan) et à l'arrivée à l'arène.
-- Plus de gestes (balayage, projection de hanche), animations de victoire et de défaite.
-- Variantes de visages et de morphologies, foule plus détaillée, familles qui chantent au bord de l'arène.
+- Plus de gestes (balayage, projection de hanche), tour d'honneur du vainqueur, coéquipiers qui le portent.
+- Les indications d'intention de l'adversaire sont encore des étiquettes de texte : les remplacer par une lecture de la posture.
+- La question « personnages style GTA 5 » posée par l'utilisateur : voir la mémoire du dossier TogoGame (passage à la 3D avec modèles rigués, ou art généré ; hors de portée du Canvas procédural).
 - Icône d'écran d'accueil, manifeste, image Open Graph (comme Nana Benz : rendu PNG avec `qlmanage`, recadrage avec `sips`).
 - Faire relire les prénoms et les détails culturels par un locuteur kabyè.

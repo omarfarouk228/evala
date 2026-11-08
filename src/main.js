@@ -640,10 +640,10 @@ function finishRound(ourMatch) {
 function runMatch() {
   const B = br(), R = ROUNDS[B.round], opp = opponentIdx();
   const rival = teamName(opp);
-  const ours = makeTeam(HOME, 500 + G.year * 13, 1.0 + (G.year - 1) * 0.05);
+  const ours = makeTeam(HOME, 500 + G.year * 13, 1.04 + (G.year - 1) * 0.06);
   const theirs = makeTeam(rival, 900 + B.round * 17 + G.year * 29, B.teams[opp].level * (R.key === 'finale' ? 1.04 : 1));
   const pairs = [];
-  for (let round = 0; round < 3; round++) for (let i = 0; i < 5; i++) pairs.push({ round, us: i === 4 ? null : ours[i], them: theirs[(i + round * 2) % 5], me: i === 4 && round !== 1 });
+  for (let round = 0; round < 3; round++) for (let i = 0; i < 5; i++) { const me = i === 4 && round !== 1; pairs.push({ round, us: me ? null : ours[i], them: theirs[(i + round * 2) % 5], me }); }
   const res = { us: 0, them: 0, list: [] };
   let idx = 0;
   const bg = () => { scene = backdrop(`m${B.round}`, { mood: R.mood, seed: 3 + B.round }); };
