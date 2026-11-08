@@ -29,7 +29,7 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - `src/data.js` : cantons de la Kozah, prénoms, activités, dates (2e au 3e samedi de juillet, calculées par année), tableau à 8, arcade.
 - `src/main.js` : écrans et déroulé (menu, aventure, préparation, tournoi, cérémonie, arcade, entraînement, tutoriel), sauvegarde.
 
-## v0.2 (2026-11-08, même jour) : ce qui a été ajouté
+## v0.2 (2026-11-08) : ce qui a été ajouté
 - **Lutteurs** : morphologies par lutteur (`look.body` : build, height, head), visages (`look.face` : nose, jaw, brow, lips), cheveux (`ras`, `bald`, `twists`, `flat`), barbe, cicatrice ; mains à quatre doigts et pouce (ouvertes ou crochetées), pieds avec orteils ; **expressions** (effort : yeux plissés, dents serrées ; chute : cri ; victoire : sourire) ; **chute articulée** (genoux, buste, bras) ; sable collé à la peau après une chute et gouttes de sueur quand le souffle manque (`skinExtras`).
 - **Foule** : `person()` redessiné de face avec visages, foulards en wax, chapeaux, casquettes, bébés au dos, téléphones levés, parapluies ; 48 variantes et 3 images (repos, bras levés, balancement en chantant) ; **familles des lutteurs** en rang au bord de l'aire, qui se balancent ensemble (`fam: true`).
 - **Cérémonie en scène** (`ceremonyScene`) : podium, champion bras levés, deux coéquipiers, moto du super Évala avec rubans, guirlande de fanions aux couleurs des cantons, foule en liesse ; la remise des prix s'affiche ensuite en bas d'écran, scène visible derrière.
@@ -61,18 +61,23 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - **Choix de respect** : seule la partie publique est montrée. Ahoyé, sacrifices et rites restent hors champ (texte seulement).
 - **Approximations à signaler** : couleurs de ceinture par canton (convention du jeu) ; tenue (short ou cache-sexe sobre, ruban au genou) faute de source ; instruments génériques (les sources disent seulement « chants, percussions ») ; prénoms kabyè à faire relire ; tableau à 8 simplifié (les sources divergent sur le classement) ; prix de la cérémonie inspirés de la moto du super Évala.
 
-## Passage à la 3D (décidé le 2026-11-08)
-Voir `PLAN-3D.md` : socle Three.js dans `src/three/arena3d.js`, démo `arene3d.html`, modèles de test à remplacer par ceux que l'utilisateur fournira (Mixamo pour les animations, Ready Player Me pour les personnages). Manette : `readPad()` dans `src/main.js`. Exigence : jouable sur mobile, manette pour Évala.
+## Combat en 3D (v0.3, 2026-11-08)
+- Décision de l'utilisateur : voie 1 (Three.js, modèles rigués) pour les trois jeux. Plan commun dans `PLAN-3D.md` (sources CC0, pipeline, état de livraison).
+- `src/three/arena3d.js` : arène Three.js (ciel peint, soleil avec ombres, sol de latérite, collines, arbres et foule de 150 spectateurs en panneaux peints avec les fonctions 2D de `arena.js`, bâche, poussière), `addCharacter()` (GLB + clips externes), `loadClips()`. `src/three/fight3d.js` : les deux lutteurs pilotés par `combat.js` (`animFor` : Crouch_Idle, Walk, Push_Loop inversé pour tirer, Hit_Chest, Jump_Start pour le crochet, PickUp_Table pour le soulevé et la terre, Death01 pour la chute, Dance_Loop pour la victoire), inclinaison du groupe selon `lean`, caméra de côté avec zoom au corps à corps, poussière et secousse. Branché dans `fightScene` de `main.js` ; `?2d` dans l'URL rend le combat peint (toujours là). Menus, préparation, cérémonie et cinématiques restent en 2D peint.
+- `public/models/mpfb/lutteur_0..5.glb` : six lutteurs MakeHuman (corps et visages différents, short et ceinture peints dans la texture) générés par `~/Documents/Github/TogoGame/assets3d/scripts/make_wrestlers.sh` (appelle `mpfb_to_ual.py` : Blender 5.2 + MPFB2 en arrière-plan, T-pose, poids du squelette Quaternius, export GLB). `UAL_blender.glb` : clips Quaternius. `public/models/quaternius/` : corps Quaternius de repli si un modèle manque. Visionneuse : `voir3d.html`.
+- Manette : `readPad()` dans `main.js` (A saisir, X crochet, Y soulever, B ou bas terre, Start pause, croix + A + B dans les menus). Mobile : boutons tactiles, pixel ratio réduit sous 700 px. **Non testé sur un vrai téléphone ni avec une manette physique.**
+- Limites honnêtes : pas de capture de mouvement de lutte (crochet et soulevé approchés), visages sans expression, pas de regard, modèles de 39 Mo au total (chargement de quelques secondes au premier combat).
 
 ## Correctifs du 2026-11-08 (soir, retours de l'utilisateur)
 - Arbres noirs en 3D : `hex()` de `paint.js` n'acceptait pas les chaînes `rgb(...)` rendues par `mix`/`shade`, donc `shade(shade(...))` donnait une couleur invalide et le feuillage gardait le style précédent (noir). Corrigé dans `hex()`.
 - Lutteurs fantômes : `Fight3D.prepare` retirait `p.model` de la scène alors qu'il est dans `p.group` ; les lutteurs du combat précédent restaient figés dans l'arène. On retire le groupe.
 - Adversaire homonyme (« Essowè de Landa » contre le joueur) : `makeTeam` exclut désormais `PLAYER.name`.
-- Pause en combat (demande de l'utilisateur) : `s.togglePause()` dans `fightScene`, bouton `#pause`.
+- Pause en combat (demande de l'utilisateur) : `s.togglePause()` dans `fightScene` (Échap, P, bouton `#pause` visible seulement quand le HUD l'est, Start de la manette), menu « Reprendre » ou « Abandonner le combat » (`result = { winner: 'b', reason: 'forfeit' }`).
+- README réécrit (modes, règles, commandes, technique, fichiers, sources, crédits CC0).
 
 ## Pistes
 - Plus de gestes (balayage, projection de hanche), tour d'honneur du vainqueur, coéquipiers qui le portent.
 - Les indications d'intention de l'adversaire sont encore des étiquettes de texte : les remplacer par une lecture de la posture.
-- La question « personnages style GTA 5 » posée par l'utilisateur : voir la mémoire du dossier TogoGame (passage à la 3D avec modèles rigués, ou art généré ; hors de portée du Canvas procédural).
+- 3D : capture de mouvement de lutte (ou animation à la main dans Blender) pour le crochet, le soulevé et la chute ; expressions du visage ; foule et cérémonie en 3D ; tester sur téléphone et manette.
 - Icône d'écran d'accueil, manifeste, image Open Graph (comme Nana Benz : rendu PNG avec `qlmanage`, recadrage avec `sips`).
 - Faire relire les prénoms et les détails culturels par un locuteur kabyè.
