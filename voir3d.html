@@ -14,7 +14,7 @@
     import { Arena3D, BASE } from './src/three/arena3d.js';
     const q = new URLSearchParams(location.search);
     const A = new Arena3D(document.getElementById('c'), { mood: q.get('mood') || 'matin' });
-    const url = q.get('m') || `${BASE}models/mpfb/wrestler1.glb`;
+    const url = q.get('m') || `${BASE}models/mpfb/lutteur_0.glb`;
     const clips = q.get('clips') ? await A.loadClips(q.get('clips')) : null;
     const p = await A.addCharacter(url, { x: 0, facing: 0, clips, anim: q.get('anim') || 'Idle', skin: q.get('skin'), band: q.get('band'), fixNormals: q.has('fn') });
     document.getElementById('tag').textContent = `${url.split('/').pop()} · clips : ${p.clips.join(', ') || 'aucun'}`;
