@@ -61,6 +61,9 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - **Choix de respect** : seule la partie publique est montrée. Ahoyé, sacrifices et rites restent hors champ (texte seulement).
 - **Approximations à signaler** : couleurs de ceinture par canton (convention du jeu) ; tenue (short ou cache-sexe sobre, ruban au genou) faute de source ; instruments génériques (les sources disent seulement « chants, percussions ») ; prénoms kabyè à faire relire ; tableau à 8 simplifié (les sources divergent sur le classement) ; prix de la cérémonie inspirés de la moto du super Évala.
 
+## Passage à la 3D (décidé le 2026-11-08)
+Voir `PLAN-3D.md` : socle Three.js dans `src/three/arena3d.js`, démo `arene3d.html`, modèles de test à remplacer par ceux que l'utilisateur fournira (Mixamo pour les animations, Ready Player Me pour les personnages). Manette : `readPad()` dans `src/main.js`. Exigence : jouable sur mobile, manette pour Évala.
+
 ## Pistes
 - Plus de gestes (balayage, projection de hanche), tour d'honneur du vainqueur, coéquipiers qui le portent.
 - Les indications d'intention de l'adversaire sont encore des étiquettes de texte : les remplacer par une lecture de la posture.

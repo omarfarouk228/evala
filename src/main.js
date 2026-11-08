@@ -75,7 +75,7 @@ let scene = null, last = performance.now();
 let loopErr = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  try { if (scene) { scene.update(dt); scene.draw(); } }
+  try { readPad(dt); if (scene) { scene.update(dt); scene.draw(); } }
   catch (e) { if (loopErr++ < 3) console.error(e); }
   requestAnimationFrame(loop);
 }
@@ -174,6 +174,35 @@ for (const b of document.querySelectorAll('#touch button')) {
   b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
 }
 const isTouch = matchMedia('(pointer: coarse)').matches;
+
+// ------------------------------------------------------------------ manette (Gamepad API)
+// Combat : stick gauche ou croix pour avancer, reculer, pousser, tirer ; A saisir ; X crochet ; Y soulever ; B ou bas prendre la terre.
+// Menus : croix haut et bas pour choisir un bouton, A pour valider, B pour revenir (Échap).
+const pad = { prev: [], has: false, menuCd: 0, map: { 0: 'grab', 2: 'trip', 3: 'lift', 1: 'earth', 13: 'earth' } };
+function readPad(dt) {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gp = null; for (const g of gps) if (g && g.connected) { gp = g; break; }
+  if (!gp) { pad.has = false; return; }
+  if (!pad.has) { pad.has = true; try { flash(`Manette détectée : ${gp.id.split('(')[0].trim()}`); } catch { /* rien */ } }
+  const b = gp.buttons.map(x => x.pressed), ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+  // combat
+  const left = ax < -0.35 || b[14], right = ax > 0.35 || b[15];
+  left ? keys.add('left') : (pad.prev[14] || pad.prevAx < -0.35) && keys.delete('left');
+  right ? keys.add('right') : (pad.prev[15] || pad.prevAx > 0.35) && keys.delete('right');
+  for (const [i, k] of Object.entries(pad.map)) if (b[i] && !pad.prev[i]) { pressed.add(k); keys.add(k); } else if (!b[i] && pad.prev[i]) keys.delete(k);
+  // menus : navigation entre les boutons visibles
+  pad.menuCd = Math.max(0, pad.menuCd - dt);
+  const btns = [...document.querySelectorAll('#screen button, #screen .act, #screen .mode, #screen .cp')].filter(e => e.offsetParent !== null && !e.disabled);
+  if (btns.length) {
+    const cur = btns.indexOf(document.activeElement);
+    const down = (b[13] && !pad.prev[13]) || (ay > 0.6 && pad.menuCd === 0), up = (b[12] && !pad.prev[12]) || (ay < -0.6 && pad.menuCd === 0);
+    if (down || up) { const n = (cur + (down ? 1 : -1) + btns.length) % btns.length; btns[n].focus(); btns[n].scrollIntoView({ block: 'nearest' }); pad.menuCd = 0.25; }
+    if (b[0] && !pad.prev[0]) { const el = btns.includes(document.activeElement) ? document.activeElement : btns.find(e => e.classList.contains('hot')) || btns[0]; el.click(); }
+    if (b[1] && !pad.prev[1] && $('cine').hidden) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+  } else if (b[0] && !pad.prev[0] && !$('cine').hidden) $('cine').click();
+  pad.prev = b; pad.prevAx = ax;
+}
+window.addEventListener('gamepadconnected', () => { pad.has = false; });
 
 // ------------------------------------------------------------------ combat
 function fightScene(o) {

@@ -200,3 +200,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .screen.cere .card h2 { font-size: clamp(30px, 4vw, 44px); }
 .screen.cere .awards { margin: 10px 0 12px; }
 .screen.cere .award { padding: 12px 14px; } .screen.cere .award b { font-size: 24px; }
+
+/* Focus visible pour la navigation à la manette ou au clavier */
+#screen button:focus-visible, .act:focus-visible, .mode:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
