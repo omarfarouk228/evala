@@ -68,7 +68,7 @@ export const ACTIVITIES = {
 export function makeTeam(canton, seed, level = 1) {
   let s = seed;
   const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  const used = new Set();
+  const used = new Set([PLAYER.name]); // jamais un homonyme du joueur en face
   return Array.from({ length: 5 }, () => {
     let n; do { n = NAMES[Math.floor(r() * NAMES.length)]; } while (used.has(n)); used.add(n);
     const styles = ['pousseur', 'ruse', 'costaud', 'patient'];

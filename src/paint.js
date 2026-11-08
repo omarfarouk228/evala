@@ -29,6 +29,8 @@ export function fbm1(seed, oct = 5) {
 }
 
 export function hex(c) {
+  // accepte '#rrggbb' et 'rgb(r,g,b)' (résultat de mix ou shade), pour pouvoir enchaîner les opérations
+  if (c[0] !== '#') { const m = c.match(/[\d.]+/g); return m && m.length >= 3 ? m.slice(0, 3).map(v => Math.round(+v)) : [0, 0, 0]; }
   const n = parseInt(c.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }

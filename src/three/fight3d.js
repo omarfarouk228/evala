@@ -29,7 +29,9 @@ class Fight3D {
       this.mood = mood;
     }
     if (!this.clips) this.clips = await this.arena.loadClips(CLIPS_URL);
-    for (const p of [this.A, this.B]) if (p) { this.arena.scene.remove(p.model); const i = this.arena.mixers.indexOf(p.mixer); if (i >= 0) this.arena.mixers.splice(i, 1); }
+    // retirer les lutteurs du combat précédent (le modèle est dans un groupe : c'est le groupe qu'il faut enlever)
+    for (const p of [this.A, this.B]) if (p) { this.arena.scene.remove(p.group || p.model); const i = this.arena.mixers.indexOf(p.mixer); if (i >= 0) this.arena.mixers.splice(i, 1); const j = this.arena.people.indexOf(p); if (j >= 0) this.arena.people.splice(j, 1); }
+    this.A = this.B = null;
     const url = (w) => (w.look && Number.isInteger(w.look.model)) ? `${MPFB}lutteur_${w.look.model}.glb` : `${QUAT}Superhero_Male_FullBody.gltf`;
     const mk = async (w, x, dir) => {
       let P;

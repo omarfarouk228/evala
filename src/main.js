@@ -193,6 +193,8 @@ function readPad(dt) {
   left ? keys.add('left') : (pad.prev[14] || pad.prevAx < -0.35) && keys.delete('left');
   right ? keys.add('right') : (pad.prev[15] || pad.prevAx > 0.35) && keys.delete('right');
   for (const [i, k] of Object.entries(pad.map)) if (b[i] && !pad.prev[i]) { pressed.add(k); keys.add(k); } else if (!b[i] && pad.prev[i]) keys.delete(k);
+  // Start : pause du combat
+  if (b[9] && !pad.prev[9] && scene && scene.togglePause) scene.togglePause();
   // menus : navigation entre les boutons visibles
   pad.menuCd = Math.max(0, pad.menuCd - dt);
   const btns = [...document.querySelectorAll('#screen button, #screen .act, #screen .mode, #screen .cp')].filter(e => e.offsetParent !== null && !e.disabled);
@@ -238,7 +240,25 @@ function fightScene(o) {
   setCrowd(o.empty ? 0.15 : o.few ? 0.4 : 0.8, 0.2);
   if (!o.empty) startMusic(o.few ? 0.25 : 0.45);
 
+  // pause : Échap, P, bouton à l'écran ou Start de la manette ; on peut aussi abandonner le combat
+  s.paused = false;
+  s.togglePause = () => {
+    if (bout.phase !== 'fight' || s.done) return;
+    s.paused = !s.paused;
+    if (s.paused) {
+      show(`<div class="card"><div class="kick">${o.label || 'Combat'}</div><h2>Pause</h2>
+        <p class="dim">${a.name} contre ${b.name}. Échap ou P pour reprendre.</p>
+        <div class="row"><button class="btn" id="p-go">Reprendre</button><button class="btn ghost" id="p-quit">Abandonner le combat</button></div></div>`);
+      $('p-go').onclick = s.togglePause;
+      $('p-quit').onclick = () => {
+        s.paused = false; clearScreen(); keys.clear(); pressed.clear();
+        bout.phase = 'ended'; bout.result = { winner: 'b', reason: 'forfeit' };
+        callout('Abandon', `${a.name} quitte l'aire`); s.endT = 1.4;
+      };
+    } else { clearScreen(); keys.clear(); pressed.clear(); }
+  };
   s.update = (dt) => {
+    if (s.paused) return;
     s.t += dt;
     let sdt = dt;
     if (s.slow > 0) { s.slow -= dt; sdt = dt * 0.28; }
@@ -977,6 +997,14 @@ const paintSound = () => { soundBtn.innerHTML = muted ? ICON_OFF : ICON_ON; soun
 const toggleSound = () => { initAudio(); setMuted(!muted); paintSound(); };
 soundBtn.onclick = toggleSound; document.body.appendChild(soundBtn); paintSound();
 window.addEventListener('keydown', (e) => { if (e.code === 'KeyM') toggleSound(); });
+
+// ------------------------------------------------------------------ pause (visible seulement en combat)
+const pauseBtn = document.createElement('button');
+pauseBtn.id = 'pause'; pauseBtn.setAttribute('aria-label', 'Pause'); pauseBtn.title = 'Pause (Échap ou P)';
+pauseBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+pauseBtn.onclick = () => { if (scene && scene.togglePause) scene.togglePause(); };
+document.body.appendChild(pauseBtn);
+window.addEventListener('keydown', (e) => { if ((e.code === 'Escape' || e.code === 'KeyP') && scene && scene.togglePause) { e.preventDefault(); scene.togglePause(); } });
 
 // ------------------------------------------------------------------ démarrage
 resize();

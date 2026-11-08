@@ -50,7 +50,7 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 - **Défaites** : après chaque combat perdu, on peut « Rejouer le combat » ou l'accepter. Des **points de reprise** sont enregistrés au début de chaque année et avant chaque rencontre (menu Aventure : « Revenir à un moment de l'aventure »). Ils sont stockés dans localStorage : `evala.save.v1`, `evala.checkpoints.v1`.
 - **Arcade** : la tournée de 8 cantons, deux chances, score (rapidité, bonus crochet et soulevé), record (`evala.arcade.best`).
 - **Entraînement** : leçon guidée de Pyabalo (tous les gestes), combats libres sur trois niveaux.
-- **Commandes** : ← → (avancer, reculer, pousser, tirer), Espace (saisir), K (crochet), L (soulever), ↓ (prendre la terre), **M (couper le son)**. Boutons tactiles sur mobile. Le bouton son est toujours visible (en haut à droite, ou à côté du chronomètre en combat), et son état est mémorisé dans `evala.mute`. L'utilisateur l'exige sur tous les jeux.
+- **Commandes** : ← → (avancer, reculer, pousser, tirer), Espace (saisir), K (crochet), L (soulever), ↓ (prendre la terre), **M (couper le son)**, **Échap ou P (pause en combat**, bouton pause à côté du son, Start sur la manette ; le menu de pause permet d'abandonner le combat, compté comme une défaite). Boutons tactiles sur mobile. Le bouton son est toujours visible (en haut à droite, ou à côté du chronomètre en combat), et son état est mémorisé dans `evala.mute`. L'utilisateur l'exige sur tous les jeux.
 
 ## Sources et réalisme
 - Wikipédia « Evala » : rite kabyè, juillet, du 2e au 3e samedi, arènes sur des terrains de football, aînés arbitres, rencontres entre villages puis finale, dates fixées par les oracles et le grand prêtre Tchodjo, tournée des prêtres aux lieux sacrés après les luttes.
@@ -63,6 +63,12 @@ Jeu n°3 de la série TogoGame (après Route N1 et Nana Benz). Ce fichier est la
 
 ## Passage à la 3D (décidé le 2026-11-08)
 Voir `PLAN-3D.md` : socle Three.js dans `src/three/arena3d.js`, démo `arene3d.html`, modèles de test à remplacer par ceux que l'utilisateur fournira (Mixamo pour les animations, Ready Player Me pour les personnages). Manette : `readPad()` dans `src/main.js`. Exigence : jouable sur mobile, manette pour Évala.
+
+## Correctifs du 2026-11-08 (soir, retours de l'utilisateur)
+- Arbres noirs en 3D : `hex()` de `paint.js` n'acceptait pas les chaînes `rgb(...)` rendues par `mix`/`shade`, donc `shade(shade(...))` donnait une couleur invalide et le feuillage gardait le style précédent (noir). Corrigé dans `hex()`.
+- Lutteurs fantômes : `Fight3D.prepare` retirait `p.model` de la scène alors qu'il est dans `p.group` ; les lutteurs du combat précédent restaient figés dans l'arène. On retire le groupe.
+- Adversaire homonyme (« Essowè de Landa » contre le joueur) : `makeTeam` exclut désormais `PLAYER.name`.
+- Pause en combat (demande de l'utilisateur) : `s.togglePause()` dans `fightScene`, bouton `#pause`.
 
 ## Pistes
 - Plus de gestes (balayage, projection de hanche), tour d'honneur du vainqueur, coéquipiers qui le portent.
